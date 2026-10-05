@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0081FF"/>
+      <stop offset="1" stop-color="#00A870"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bg)"/>
+  <!-- 磐石: 下方石头 + 上方盾形 -->
+  <path d="M64 30 L92 44 V72 C92 92 79 102 64 108 C49 102 36 92 36 72 V44 Z"
+        fill="#FFFFFF" opacity="0.95"/>
+  <rect x="46" y="62" width="36" height="10" rx="5" fill="#0081FF"/>
+  <rect x="46" y="78" width="28" height="10" rx="5" fill="#0081FF"/>
+  <path d="M46 46 H82 V58 H46 Z" fill="#0081FF" opacity="0.85"/>
+</svg>

@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic Panshi disk space monitor
+
+[Timer]
+OnCalendar=*:00/15
+Persistent=true
+RandomizedDelaySec=90
+
+[Install]
+WantedBy=timers.target

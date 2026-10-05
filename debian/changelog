@@ -1,0 +1,63 @@
+panshi-manager (1.0.3) unstable; urgency=medium
+
+  * 修复总览页「磐石部署」显示为空：getDeployVersion() 取了 deploy_list 的
+    first()，而实测 deepin-immutable-ctl admin status -j 输出里第一项是
+    **待生效的新部署**（IsBooted=false 且 SystemVersion 为空），当前运行的
+    部署须用 IsBooted 判定 —— 与同文件 getBootedDeployId() 的既有写法一致，
+    属漏改的复制粘贴。已启动项版本号为空时退取第一个非空版本。
+  * 修复启动器可能重复显示或图标异常：desktop 的 Categories 含两个主分类
+    （System;Settings;），desktop-file-validate 提示应用可能在菜单中出现
+    多次。收敛为单主分类 System;。新增 panshi-iconprobe 与
+    panshi-backendprobe 两个开发期探针，分别验证图标解析链路（含像素级
+    可见性）与后端取值来源（含反向对照）。
+
+ -- Deepin Packages Builder <packages@deepin.com>  Mon, 05 Oct 2026 07:55:00 +0800
+
+panshi-manager (1.0.2) unstable; urgency=medium
+
+  * 修复「减少动态效果」系统开关对本应用完全无效：原实现用 DConfig 读
+    com.deepin.wrap.gnome.desktop.interface / enable-animations，但该键属于
+    GSettings（glib gschema），DConfig 目录 /usr/share/dsg/configs/ 下并不存在，
+    dde-dconfig 恒报 not exist resource，读取静默回落默认值。现改为直接查询
+    GSettings，并保留「探测失败则保持动效开启」的保守默认。
+  * 不改用 Dtk::Gui::DGuiApplicationHelper::HasAnimations：实测其语义是
+    「DTK 自身动画是否启用」（由 D_DTK_DISABLE_ANIMATIONS 与 DConfig
+    org.deepin.dtk.preference 驱动），不读 GNOME 兼容键；在本机该 DConfig
+    schema 未安装时它恒为 false，误用会把全应用动效关掉。
+  * 新增开发期探针 panshi-animprobe：三方比对 gsettings 真值与被测函数，
+    配合 GSETTINGS_BACKEND=keyfile 可在无 dconf daemon 的环境下做
+    「改系统设置 → 观察变化 → 恢复」的双向验证。
+
+ -- Deepin Packages Builder <packages@deepin.com>  Mon, 05 Oct 2026 07:24:00 +0800
+
+panshi-manager (1.0.1) unstable; urgency=medium
+
+  * 修复磁盘监控开关无法保存：DConfig schema 的全部 16 个键缺少
+    `permissions` 字段，按 deepin 配置文件规范该字段为空即为只读，
+    导致写入被 daemon 静默拒绝（set 退出码 0 但读回仍是默认值），
+    表现为开关弹回「关」且后台采样进程零产出。现已全部补为 readwrite。
+  * 配置源恢复为 deepin 规范架构：以 DConfig 为主读取源，
+    QSettings 仅在 DConfig 不可用时降级，写入时双写保持一致。
+    （此前为规避上述故障曾改以 QSettings 为主，属官方 gotchas 列出的反模式。）
+  * 磁盘监控 systemd 单元：补 TimeoutStartSec=30min 避免长扫描被提前终止，
+    钉住 HOME 环境变量保证跨进程读取同一份配置。
+  * 后台采样进程将运行结果输出到 stderr，journal 可见，
+    终结「跑成功/跑失败都一片空白」的排查困境。
+  * 打包规范对齐官方示例：Build-Depends 补 systemd，rules 补
+    hardening=+all 与 CMAKE_SKIP_BUILD_RPATH=ON。
+
+ -- Deepin Packages Builder <packages@deepin.com>  Mon, 05 Oct 2026 06:54:00 +0800
+
+panshi-manager (1.0.0) unstable; urgency=medium
+
+  * 初始发布：Deepin 25 磐石系统管理工具。
+  * 基于 DTK6 / Qt6 的完整 GUI，覆盖总览、总开关、快照、版本回滚、
+    系统保护、策略设置、部署、系统更新、磁盘监控等模块。
+  * 内置 systemd 用户级磁盘监控守护进程（oneshot + 15 分钟 timer）。
+  * 通过 DConfig 持久化磁盘监控策略（schema 安装至 /usr/share/dsg/configs）。
+  * 提供简体中文 / 英文翻译（.qm 随包安装至
+    /usr/share/panshi-manager/translations）。
+  * 符合 deepin 打包规范：debhelper-compat 13、source format 3.0 (native)、
+    dh cmake 构建系统。
+
+ -- Deepin Packages Builder <packages@deepin.com>  Sun, 04 Oct 2026 22:48:00 +0800

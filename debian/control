@@ -1,0 +1,29 @@
+Source: panshi-manager
+Section: admin
+Priority: optional
+Maintainer: Deepin Packages Builder <packages@deepin.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ pkg-config,
+ qt6-base-dev,
+ qt6-tools-dev,
+ libdtk6core-dev,
+ libdtk6gui-dev,
+ libdtk6widget-dev,
+ systemd,
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: panshi-manager
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends}
+Description: Deepin 25 磐石系统管理工具
+ 磐石设置（Panshi Manager）是面向 Deepin 25 不可变（immutable / ostree）系统的
+ 图形化管理工具，基于 DTK6 / Qt6 构建。
+ .
+ 功能覆盖：总览、总开关、快照管理、版本与回滚、系统保护、策略与设置、
+ 部署、系统更新、磁盘空间监控等。内置磁盘空间守护进程（systemd 用户单元），
+ 通过 DConfig 持久化监控策略，并提供简体中文 / 英文界面。

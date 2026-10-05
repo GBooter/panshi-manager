@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+# deepin / DTK6 应用标准打包流程（参照 linuxdeepin/deepin-skills 官方示例
+# dtk-codeviewer 与 dde-shell-sysmon）
+
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/default.mk
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+# deepin 打包加固：全量 hardening + 常见链接加固
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -Wall
+export DEB_CXXFLAGS_MAINT_APPEND = -Wall
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-E
+
+%:
+	dh $@ --buildsystem=cmake
+
+# 安装前缀必须是 /usr：DConfig schema 必须落在 /usr/share/dsg/configs
+# （DSG 查找路径硬编码，环境变量无效），详见 CMakeLists.txt 内注释。
+# CMAKE_SKIP_BUILD_RPATH=ON 避免构建目录路径被打进产物，与官方示例一致。
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DCMAKE_SKIP_BUILD_RPATH=ON

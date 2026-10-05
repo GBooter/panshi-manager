@@ -1,0 +1,17 @@
+[Unit]
+Description=Panshi Manager disk space monitor
+
+[Service]
+Type=oneshot
+# 监控开关读自 ~/.config/deepin/panshi-manager.conf（与 GUI 同一份），
+# 显式钉住 HOME，避免用户实例环境里 HOME/XDG_CONFIG_HOME 缺失导致读到空配置
+Environment="HOME=%h"
+ExecStart=@PANSHI_BINDIR@/panshi-manager --monitor
+Nice=19
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+# ⚠️ 一轮 du 全盘扫描可以跑很久（监控进程自带 30 分钟看门狗），
+# 而 systemd 的 DefaultTimeoutStartSec 只有 90 秒 —— 不显式放宽的话，
+# 大目录还没扫完就被 SIGTERM 杀掉，service 会一直停在 failed、基线永远建不起来。
+# 与 monitor.cpp 的看门狗取同一量级。
+TimeoutStartSec=30min

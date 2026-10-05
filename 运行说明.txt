@@ -1,0 +1,12 @@
+直接运行：
+Test@Test-PC:~/Downloads/panshi-settings-dtk$ ./build/panshi-manager
+
+
+
+打包构建安装：
+cd /home/Test/Downloads/panshi-settings-dtk
+sudo ./install.sh          # 一键构建并安装到系统
+# 或手动：cmake -B build && cmake --build build && sudo cmake --install build
+
+
+

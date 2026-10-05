@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=磐石设置
+Name[en_US]=Panshi Manager
+Comment=Deepin 25 磐石系统管理工具
+Comment[en_US]=Deepin 25 immutable system management tool
+Exec=@PANSHI_BINDIR@/panshi-manager
+Icon=panshi
+Terminal=false
+Categories=System;
+Keywords=immutable;ostree;snapshot;panshi;
+X-Deepin-Vendor=deepin

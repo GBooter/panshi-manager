@@ -1,0 +1,32 @@
+#!/bin/sh
+# postinst — 安装 / 升级后维护脚本
+# 处理：systemd 用户单元重载、图标缓存、桌面数据库。
+# 图标缓存与桌面数据库现代 deepin 由 dpkg trigger 自动重建，此处显式更新以兼容
+# 纯净系统及手动 dpkg -i 安装场景。
+set -e
+
+case "$1" in
+    configure)
+        # ⚠️ 这里**不**尝试重载 systemd 用户单元，原因有二（2026-10-04 实测）：
+        #   1. 原先写的 `systemctl --global daemon-reload` 是无效命令 ——
+        #      systemd 255 实际输出 "--global is not supported for this operation."
+        #      退出码 1，又被 `|| true` 静默吞掉，等于什么都没做。
+        #   2. 就算换成不带 --global 的 `systemctl --user daemon-reload` 也没用：
+        #      dpkg 以 root 运行，连不上登录用户的会话总线（DBUS_SESSION_BUS_ADDRESS
+        #      指向的是用户自己的 /run/user/<uid>/bus）。
+        #   → 用户单元只能由**应用进程在用户会话内**重载。已实现在
+        #     DiskUsagePage::ensureMonitorUnitLoaded()：开启监控前先
+        #     daemon-reload，再用 `systemctl --user cat` 验证单元已被识别。
+        #     因此本包安装后无需、也无法在此处做任何 systemd 操作。
+        # 图标主题缓存
+        if command -v update-icon-caches >/dev/null 2>&1; then
+            update-icon-caches /usr/share/icons/hicolor 2>/dev/null || true
+        fi
+        # 应用入口数据库
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database /usr/share/applications 2>/dev/null || true
+        fi
+        ;;
+esac
+
+exit 0

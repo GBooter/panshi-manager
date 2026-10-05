@@ -1,0 +1,19 @@
+#!/bin/sh
+# postrm — 移除 / 卸载后维护脚本
+set -e
+
+case "$1" in
+    remove|purge)
+        # 同 postinst：无法在此处操作用户实例（`systemctl --global daemon-reload`
+        # 本身是无效命令，且 root 连不上用户会话总线）。移除单元文件后，
+        # 用户侧残留的启用链接由 systemd 在下次重载/登录时自行收敛。
+        if command -v update-icon-caches >/dev/null 2>&1; then
+            update-icon-caches /usr/share/icons/hicolor 2>/dev/null || true
+        fi
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database /usr/share/applications 2>/dev/null || true
+        fi
+        ;;
+esac
+
+exit 0
