@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  关于 —— 圆角方章 + 白色 i
+
+  为什么不用「圆形 + i」（那是最常见画法）：侧栏「概览」用的正是一个**紫色圆形**
+  图标。两个都做成圆形，20px 下只差一个字母形状，扫视时极易认错。
+  改用**圆角方章**：形状与概览的圆形天然区分，色相也从紫换成靛蓝。
+  字母 i 只用「圆点 + 竖条」两个基本形，任何缩放下都不会糊。
+-->
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="infoBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8391FF"/>
+      <stop offset="1" stop-color="#4A55D8"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="104" height="104" rx="30" fill="url(#infoBody)"/>
+  <circle cx="64" cy="41" r="11" fill="#FFFFFF"/>
+  <rect x="53" y="62" width="22" height="43" rx="10" fill="#FFFFFF"/>
+</svg>
