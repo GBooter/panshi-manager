@@ -1,1 +1,0 @@
-Graphical manager for Deepin 25 immutable systems: protection, snapshots, upgrades, disk monitoring.
