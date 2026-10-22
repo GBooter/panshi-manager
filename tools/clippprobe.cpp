@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // 全项目 wordWrap 标签「高度不足被裁切」检测（开发期验证用，验证后删除）
 //
 // 判据（2026-10-06 定）：QLabel 设了 wordWrap 后依赖 heightForWidth 协商高度。
