@@ -21,6 +21,12 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# 磐石系统上 /usr/bin/dpkg 与 apt 一样是指向 immutable-adapter.sh 的软链，
+# root 下调它会先尝试 remount /usr（不可变系统上该操作只应由系统升级流程
+# 发起，手工打包场景必失败）。打 deb 纯属本地文件操作，禁用 remount 接管；
+# 非磐石系统上该变量无副作用（原生 dpkg 不读取它）。
+export IMMUTABLE_DISABLE_REMOUNT=true
+
 # ---- 版本号 / 架构：单一来源取自 debian/changelog ----
 VERSION="$(sed -n '1s/^[^(]*(\([^)]*\)).*/\1/p' debian/changelog)"
 ARCH="$(dpkg --print-architecture)"
@@ -38,6 +44,19 @@ echo "==> 版本号 ${VERSION}  架构 ${ARCH}  前缀 ${PREFIX}"
 
 # ---- 前置条件校验（缺一项就中止，避免产出内容不全的“看似成功”的包）----
 [ -n "$VERSION" ] || { echo "错误：无法从 debian/changelog 解析版本号" >&2; exit 1; }
+
+# ---- 版本一致性防漂移：changelog 与 CMakeLists.txt 的 project(VERSION) 必须相同 ----
+# 界面「关于」页显示的版本由 CMakeLists.txt 注入（PANSHI_VERSION），包版本由
+# changelog 决定。1.0.0~1.0.5 期间两处脱钩：包到 1.0.5，界面仍显示 1.0.0。
+# 这里一旦不一致直接中止，别让「界面版本 ≠ 包版本」的包再流出去。
+CMAKE_VERSION="$(sed -n 's/^project(panshi-manager VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt | head -1)"
+[ -n "$CMAKE_VERSION" ] || { echo "错误：无法从 CMakeLists.txt 解析 project(VERSION)" >&2; exit 1; }
+if [ "$VERSION" != "$CMAKE_VERSION" ]; then
+  echo "错误：版本号不一致 —— debian/changelog=${VERSION}，CMakeLists.txt=${CMAKE_VERSION}" >&2
+  echo "      两处必须同步：changelog 决定包版本，CMakeLists 决定界面显示版本" >&2
+  exit 1
+fi
+echo "==> 版本一致性校验通过：changelog 与 CMakeLists.txt 均为 ${VERSION}"
 command -v dpkg-deb >/dev/null || { echo "错误：未找到 dpkg-deb" >&2; exit 1; }
 # 选 release 二进制：build/ 与 build2/ 中取体积较小者
 # （debug 构建含 debug_info 明显更大；release 构建不含）
@@ -52,6 +71,14 @@ pick_bin() {
 }
 BIN="$(pick_bin)"
 echo "==> 选用二进制: $BIN ($(stat -c%s "$BIN") 字节)"
+# 二进制里必须带当前版本串（applicationVersion 的值来自 PANSHI_VERSION 宏）。
+# 缺了说明二进制是旧构建 —— 那种包装上去界面版本又会和包版本对不上。
+# ⚠ 版本串经 QStringLiteral 以 **UTF-16LE** 存进 rodata，普通 strings（只抽 ASCII）
+#   会把它拆成单字符序列而漏报；必须同时查 ASCII 与 -e l（16-bit LE）两种编码。
+if ! strings "$BIN" | grep -qx "$VERSION" && ! strings -e l "$BIN" | grep -qx "$VERSION"; then
+  echo "错误：$BIN 内不含版本串 ${VERSION}，疑似旧构建，请重新编译后再打包" >&2
+  exit 1
+fi
 for qm in translations/panshi-manager_en_US.qm translations/panshi-manager_zh_CN.qm; do
   [ -f "$qm" ] || { echo "错误：$qm 不存在，请先生成翻译" >&2; exit 1; }
 done
@@ -66,9 +93,16 @@ mkdir -p "$STAGE/DEBIAN" \
          "$STAGE${PREFIX}/share/dsg/configs/org.deepin.panshi-manager" \
          "$STAGE${PREFIX}/lib/systemd/user"
 
-install -m 0755 build/panshi-manager "$STAGE${PREFIX}/bin/panshi-manager"
+# 用 pick_bin 的选型结果（此前硬编码 build/，pick_bin 的返回值被丢弃：
+# 若 build/ 是 debug 构建而 build2/ 是 release，包里会静默混入带调试信息的大二进制）。
+install -m 0755 "$BIN" "$STAGE${PREFIX}/bin/panshi-manager"
 install -m 0644 build/*.qm           "$STAGE${PREFIX}/share/panshi-manager/translations/"
 install -m 0644 data/icons/panshi.svg "$STAGE${PREFIX}/share/icons/hicolor/scalable/apps/"
+# 新 Logo（2026-10-09）：同步 staging 各标准尺寸 PNG（四角统一大圆角）。
+for _s in 16 22 24 32 48 64 128 256 512; do
+    mkdir -p "$STAGE${PREFIX}/share/icons/hicolor/${_s}x${_s}/apps"
+    install -m 0644 "data/icons/panshi-${_s}.png" "$STAGE${PREFIX}/share/icons/hicolor/${_s}x${_s}/apps/panshi.png"
+done
 
 # desktop / service 源含 @PANSHI_BINDIR@ 占位符（由 CMake configure_file 填）；
 # 此处按 /usr 前缀替换 —— 写死绝对路径会让“deb 形态”或“用户级形态”其一失效。

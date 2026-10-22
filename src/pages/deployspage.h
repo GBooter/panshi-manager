@@ -11,11 +11,19 @@ class QTableWidget;
 class MainWindow;
 
 /**
- * 系统版本（部署）子页（阶段 3-6 重写）：
+ * 系统版本（部署）子页（阶段 3-6 重写 + 2026-10-06 两轮重设计）：
  *  - 反馈走 PanshiInlineBanner，不再弹模态窗；
- *  - 「当前」「回滚前」标签改用 PanshiBadge；
+ *  - **顶部 3 张状态卡**（部署总数 / 当前启动 / 可删除部署），与快照页策略卡
+ *    同构 —— 两个子页视觉结构一致，页面上半不再是光秃秃的提示 + 表格；
+ *  - **版本列去内联徽章**：原「当前启动/待生效/回滚前」徽章与「状态」列取值重复
+ *    （同一行同时出现两个「当前启动」），且挤占版本号宽度导致 28 字符的版本串
+ *    被中省略成「deep….100」。徽章职责并入状态列（语义着色），版本号列加宽到
+ *    210 完整显示；
+ *  - **状态列语义着色**：当前启动=Accent / 待生效·回滚备份=Warning / 历史=Muted，
+ *    扫视即可区分「正在运行 / 待启用 / 可清理」；
  *  - 空状态改用 PanshiEmptyState；
- *  - 列宽改 Interactive + 初始宽度，避免窄窗口下操作列被挤出；
+ *  - 列宽全部 Interactive（可拖拽调整）+ 操作列下限钳制（原「版本号 Stretch」
+ *    列手柄无效，用户反馈列宽不可调）；
  *  - 删除按钮改为按 commitId 定位，不再捕获行下标（刷新后下标会错位）；
  *  - L2 局部加载 + m_running 防重入。
  */
@@ -29,14 +37,20 @@ public:
 
 private:
     void onLoaded(const QVariant &res);
-    void onUndeploy(int index);
+    void onUndeploy(const QString &commitId);
+    static QString humanizeUndeployError(const QString &raw);
     void applyColumnWidths();
-    /** 按行下标定位部署；下标越界时返回 nullptr（删除前调用方会复核 commitId） */
-    const Panshi::DeployInfo *findDeploy(const QString &commitId, int index) const;
+    /** 按 commitId 唯一定位部署；commitId 为空时返回 nullptr */
+    const Panshi::DeployInfo *findDeploy(const QString &commitId) const;
 
     MainWindow *m_win = nullptr;
     QTableWidget *m_table = nullptr;
     PanshiUi::PanshiInlineBanner *m_banner = nullptr;
+    /** 部署状态三卡（部署总数 / 当前启动 / 可删除部署） */
+    PanshiUi::PanshiResponsiveCardRow *m_statRow = nullptr;
+    PanshiUi::PanshiStateCard *m_statTotal = nullptr;
+    PanshiUi::PanshiStateCard *m_statBooted = nullptr;
+    PanshiUi::PanshiStateCard *m_statDeletable = nullptr;
     PanshiUi::PanshiLocalLoading *m_busy = nullptr;
     PanshiUi::PanshiEmptyState *m_empty = nullptr;
     QList<Panshi::DeployInfo> m_deploys;

@@ -2,7 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: panshi-manager
 
 Files: *
-Copyright: 2026 Deepin Packages Builder
+Copyright: 2026 Feelup
 License: GPL-3+
  This package is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by

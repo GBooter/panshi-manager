@@ -13,7 +13,7 @@ int runMonitor(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("panshi-manager"));
-    app.setApplicationVersion(QStringLiteral("1.0.0"));
+    app.setApplicationVersion(QStringLiteral(PANSHI_VERSION));
 
     DiskMonitor monitor;
     QObject::connect(&monitor, &DiskMonitor::finished, &app,

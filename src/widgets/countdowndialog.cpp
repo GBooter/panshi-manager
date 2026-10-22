@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "countdowndialog.h"
 
+#include "ui/components.h"
+
 #include <DFontSizeManager>
 #include <DPalette>
 #include <DGuiApplicationHelper>
@@ -144,6 +146,7 @@ PanshiCountdownDialog::PanshiCountdownDialog(QWidget *parent)
 void PanshiCountdownDialog::showEvent(QShowEvent *event)
 {
     DAbstractDialog::showEvent(event);
+    PanshiUi::disableDialogTransparency(this);   // 关闭 DTK 弹窗默认的模糊/透明效果
     // 居中于父窗口
     if (parentWidget()) {
         const QRect g = parentWidget()->window()->geometry();

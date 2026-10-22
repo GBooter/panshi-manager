@@ -9,8 +9,6 @@
 #include <QAbstractItemView>
 #include <QFileInfo>
 #include <QFontMetrics>
-#include <QKeyEvent>
-#include <QLineEdit>
 #include <QPainter>
 #include <QStandardItemModel>
 #include <QStyleOption>
@@ -23,19 +21,14 @@ namespace {
 
 // 自定义数据角色
 //
-// 注意：导航模型与结果模型共用同一个 SidebarDelegate，delegate 一律按
-// kGroupRole / kDataRole 取值。因此两套角色必须落在**互不重叠**的区间，
-// 否则结果行会把 pageId 喂给 kGroupRole，被误判成"分组标题行"而错位。
+// 注意：delegate 按 kGroupRole / kDataRole 取值。
 //   · 导航模型：UserRole + 1 / + 2
-//   · 结果模型：UserRole + 11 / + 12 / + 13
+//   · 导航项存原始图标名（主题切换时据此重查，2026-10-03）：UserRole + 21 / + 22
+//
+// 2026-10-06：原先搜索结果模型用的 +11/+12/+13 三个角色已随搜索功能一并移除。
 constexpr int kDataRole = Qt::UserRole + 1;   // int：PageId
 constexpr int kGroupRole = Qt::UserRole + 2;  // bool：分组标题行
-// 搜索结果行
-constexpr int kTargetKeyRole = Qt::UserRole + 11;  // QString：落地键（PanshiRow 标题）
-constexpr int kResultPageRole = Qt::UserRole + 12; // int：PageId
-constexpr int kHintRole = Qt::UserRole + 13;       // bool：提示行（无匹配）
 // 导航项存原始图标名（主题切换时据此重查，2026-10-03）。
-// 落在 +21/+22，仍与上面两段互不重叠 —— 角色号撞车会让 delegate 取到错值。
 constexpr int kNavIconRole = Qt::UserRole + 21;     // QString：首选图标名
 constexpr int kNavFallbackRole = Qt::UserRole + 22; // QString：备选图标名
 
@@ -190,43 +183,16 @@ PanshiSidebar::PanshiSidebar(QWidget *parent)
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_view->viewport()->setAutoFillBackground(false);
     m_view->setObjectName(QStringLiteral("panshiNavList"));
-    // 无障碍：列表本身要有名称，读屏才知道当前在导航区还是搜索结果区
+    // 无障碍：列表本身要有名称，读屏才知道当前在导航区
     m_view->setAccessibleName(QObject::tr("主导航"));
 
-    // ---- 设置搜索（阶段 4）：输入框 + 结果列表 ----
-    // 结果列表覆盖在导航之上（同一位置互斥显示），避免侧栏被撑成两段。
-    m_search = new DLineEdit(this);
-    m_search->setPlaceholderText(QObject::tr("搜索设置"));
-    m_search->setClearButtonEnabled(true);
-    // 无障碍：placeholder 只是视觉提示，屏幕阅读器需显式名称；
-    // 搜索结果列表也要有名称，否则读屏只会念出一串条目而无上下文
-    m_search->setAccessibleName(QObject::tr("搜索设置"));
-    m_search->lineEdit()->setObjectName(QStringLiteral("panshiSearchEdit"));
-    m_search->lineEdit()->setAccessibleDescription(
-        QObject::tr("输入设置名称可跳转到对应设置项"));
-    m_search->hide();   // setSettingIndex() 后才显示
-
-    m_resultModel = new QStandardItemModel(this);
-    m_results = new QListView(this);
-    m_results->setModel(m_resultModel);
-    m_results->setFrameShape(QFrame::NoFrame);
-    m_results->setItemDelegate(new SidebarDelegate(m_results));
-    m_results->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_results->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_results->setMouseTracking(true);
-    m_results->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_results->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_results->viewport()->setAutoFillBackground(false);
-    m_results->setObjectName(QStringLiteral("panshiSearchResultList"));
-    m_results->setAccessibleName(QObject::tr("设置搜索结果"));
-    m_results->hide();
-
+    // ⚠️ 2026-10-06 按用户要求移除设置搜索：原此处创建 DLineEdit(m_search) 与
+    // 结果列表(m_results)，并把两者塞进同一个 QVBoxLayout 与 m_view 互斥显示。
+    // 现在侧栏只有导航列表一项，布局里不再需要 addWidget(m_search)/addWidget(m_results)。
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0, 0, 0, 0);
     lay->setSpacing(Space::S);
-    lay->addWidget(m_search);
     lay->addWidget(m_view, 1);
-    lay->addWidget(m_results, 1);
 
     // 点击与回车（activated）都触发导航
     auto emitActivation = [this](const QModelIndex &idx) {
@@ -236,32 +202,8 @@ PanshiSidebar::PanshiSidebar(QWidget *parent)
     connect(m_view, &QListView::clicked, this, emitActivation);
     connect(m_view, &QListView::activated, this, emitActivation);
 
-    // 搜索：文本变化即刷新结果；回车/双击落地；Esc 清空；↑↓ 移动高亮
-    connect(m_search->lineEdit(), &QLineEdit::textChanged,
-            this, &PanshiSidebar::onSearchTextChanged);
-    connect(m_search->lineEdit(), &QLineEdit::returnPressed, this, [this] {
-        const QModelIndex idx = m_results->currentIndex();
-        if (idx.isValid() && !idx.data(kHintRole).toBool())
-            activateResult(idx.row());
-    });
-    connect(m_results, &QListView::clicked, this,
-            [this](const QModelIndex &idx) { activateResult(idx.row()); });
-    connect(m_results, &QListView::activated, this,
-            [this](const QModelIndex &idx) { activateResult(idx.row()); });
-
-    // ↑↓ / Esc 的事件过滤器装在**输入框**上，不是结果列表。
-    //
-    // ⚠️ 缺陷 A2-1 / A2-2 的根因（2026-10-02 实测）：原实现把 filter 装在
-    // m_results 上、且只处理 Esc。但搜索态下**焦点始终在 lineEdit**——
-    //   · ↑↓ 被 QLineEdit 消费为「输入历史上下翻」，根本不会到达结果列表；
-    //   · Esc 同理，用户看到的是 QLineEdit 自带行为（未清空我们的状态）；
-    //   · 而结果列表**永远拿不到焦点**：点它会走 clicked → activateResult
-    //     → 立即落地并切页（这本身是设计），焦点没机会停留。
-    // 结论：把键盘导航放在**持有焦点的那个控件**上。
-    // 保留 m_results 上的过滤器：焦点若因程序化 setFocus 落到列表上（如
-    // 未来加「结果列表 Tab 可达」），Esc 仍能正确清空。
-    m_search->lineEdit()->installEventFilter(this);
-    m_results->installEventFilter(this);
+    // ⚠️ 原先装在 m_search->lineEdit() 与 m_results 上的 eventFilter
+    // （搜索态 ↑↓/Esc 键盘导航）已随搜索功能一并移除。
 
     // ---- 主题切换：重查图标 + 强制重绘（2026-10-03 用户反馈修）----
     //
@@ -281,168 +223,28 @@ PanshiSidebar::PanshiSidebar(QWidget *parent)
     // 挂 `applicationPaletteChanged` 而非 `themeTypeChanged`：前者在新调色板
     // 就位后才发（main.cpp 的注释已详述该时序差），两个切换方向都稳。
     auto rebuildIcons = [this] {
-        for (QListView *view : {m_view, m_results}) {
-            QStandardItemModel *mdl = qobject_cast<QStandardItemModel *>(view->model());
-            if (!mdl)
+        QStandardItemModel *mdl = qobject_cast<QStandardItemModel *>(m_view->model());
+        if (!mdl)
+            return;
+        for (int r = 0; r < mdl->rowCount(); ++r) {
+            QStandardItem *it = mdl->item(r);
+            if (!it)
                 continue;
-            for (int r = 0; r < mdl->rowCount(); ++r) {
-                QStandardItem *it = mdl->item(r);
-                if (!it)
-                    continue;
-                // 结果模型的图标是搜索统一用 preferences-system，重查即可；
-                // 导航模型则从 kNavIconRole 存的原名重查（见 addItem）。
-                const QString primary = it->data(kNavIconRole).toString();
-                if (primary.isEmpty())
-                    continue;
-                const QString fallback = it->data(kNavFallbackRole).toString();
-                it->setIcon(navIcon(primary, fallback));
-            }
-            view->viewport()->update();
+            const QString primary = it->data(kNavIconRole).toString();
+            if (primary.isEmpty())
+                continue;
+            const QString fallback = it->data(kNavFallbackRole).toString();
+            it->setIcon(navIcon(primary, fallback));
         }
+        m_view->viewport()->update();
     };
     connect(DGuiApplicationHelper::instance(),
             &DGuiApplicationHelper::applicationPaletteChanged,
             this, [this, rebuildIcons] {
         rebuildIcons();
         // 分组标题与选中态也依赖取色，一并重绘
-        if (m_view)  m_view->viewport()->update();
-        if (m_results) m_results->viewport()->update();
+        m_view->viewport()->update();
     });
-}
-
-/**
- * 搜索态键盘导航：↑↓ 移动结果高亮、Esc 清空。
- *
- * 装在 m_search->lineEdit() 与 m_results 两处（见构造函数的说明）。
- */
-bool PanshiSidebar::eventFilter(QObject *watched, QEvent *e)
-{
-    const bool isInput   = (watched == m_search->lineEdit());
-    const bool isResults = (watched == m_results);
-    if (!isInput && !isResults)
-        return QWidget::eventFilter(watched, e);
-    // 只有搜索态（结果列表可见）才接管方向键，避免影响导航列表的正常 ↑↓
-    if (e->type() != QEvent::KeyPress)
-        return QWidget::eventFilter(watched, e);
-
-    auto *ke = static_cast<QKeyEvent *>(e);
-
-    // Esc：清空关键词（textChanged 会把视图切回导航）并把焦点交回输入框
-    if (ke->key() == Qt::Key_Escape) {
-        if (!m_search->lineEdit()->text().isEmpty()) {
-            m_search->lineEdit()->clear();
-            m_search->lineEdit()->setFocus(Qt::ShortcutFocusReason);
-            return true;
-        }
-        // 已空：让 Esc 继续冒泡（不吞掉，避免影响外层对话框/主窗口的 Esc 语义）
-        return QWidget::eventFilter(watched, e);
-    }
-
-    // ↑↓：移动结果高亮（缺陷 A2-1）。必须在 lineEdit 上拦截 ——
-    // 否则 QLineEdit 会把它当输入历史导航，列表高亮不动。
-    if (isInput && (ke->key() == Qt::Key_Up || ke->key() == Qt::Key_Down)) {
-        if (!m_results->isVisible() || m_resultModel->rowCount() == 0)
-            return QWidget::eventFilter(watched, e);
-        // 「无匹配」提示行只有 1 行且不可选，无需移动
-        if (m_resultModel->rowCount() == 1
-            && m_resultModel->index(0, 0).data(kHintRole).toBool())
-            return true;
-
-        const int cur = m_results->currentIndex().row();
-        const int last = m_resultModel->rowCount() - 1;
-        int next = cur;
-        if (ke->key() == Qt::Key_Down)
-            next = (cur < 0) ? 0 : ((cur >= last) ? 0 : cur + 1);   // 到末尾回卷到首项
-        else
-            next = (cur < 0) ? 0 : ((cur <= 0) ? last : cur - 1);  // 到首项回卷到末项
-        m_results->setCurrentIndex(m_resultModel->index(next, 0));
-        m_results->scrollTo(m_resultModel->index(next, 0),
-                            QAbstractItemView::PositionAtCenter);
-        return true;   // 吞掉：阻止 QLineEdit 翻输入历史
-    }
-
-    return QWidget::eventFilter(watched, e);
-}
-
-void PanshiSidebar::setSettingIndex(const SettingIndex *index)
-{
-    m_index = index;
-    // 无索引时不提供搜索入口（侧栏退化为纯导航）
-    m_search->setVisible(index != nullptr);
-    if (!index) {
-        m_results->hide();
-        m_view->show();
-    }
-}
-
-void PanshiSidebar::onSearchTextChanged(const QString &text)
-{
-    if (text.trimmed().isEmpty()) {
-        m_resultModel->clear();
-        m_results->hide();
-        m_view->show();
-        return;
-    }
-    refreshResults();
-}
-
-void PanshiSidebar::refreshResults()
-{
-    m_resultModel->clear();
-    const QString kw = m_search->lineEdit()->text().trimmed();
-
-    if (!m_index) {
-        showNoResultHint();
-        return;
-    }
-    const QList<SettingEntry> hits = m_index->query(kw);
-    if (hits.isEmpty()) {
-        showNoResultHint();
-        return;
-    }
-
-    // 搜索结果统一用「设置」图标；具名常量便于主题切换时重查
-    static const QString kResultIcon = QStringLiteral("preferences-system");
-    for (const SettingEntry &e : hits) {
-        auto *it = new QStandardItem(navIcon(kResultIcon, QString()), e.title);
-        it->setData(e.targetKey, kTargetKeyRole);
-        it->setData(e.pageId, kResultPageRole);
-        it->setToolTip(e.description.isEmpty() ? e.title : e.description);
-        it->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-        // 同样存原名，供主题切换时重建图标（与导航项一致）
-        it->setData(kResultIcon, kNavIconRole);
-        m_resultModel->appendRow(it);
-    }
-
-    m_view->hide();
-    m_results->show();
-    m_results->setCurrentIndex(m_resultModel->index(0, 0));
-}
-
-void PanshiSidebar::showNoResultHint()
-{
-    m_resultModel->clear();
-    auto *it = new QStandardItem(QObject::tr("未找到匹配的设置项"));
-    it->setData(true, kHintRole);
-    it->setFlags(Qt::NoItemFlags);
-    m_resultModel->appendRow(it);
-    m_view->hide();
-    m_results->show();
-}
-
-void PanshiSidebar::activateResult(int row)
-{
-    const QModelIndex idx = m_resultModel->index(row, 0);
-    if (!idx.isValid() || idx.data(kHintRole).toBool())
-        return;
-    const int pageId = idx.data(kResultPageRole).toInt();
-    const QString key = idx.data(kTargetKeyRole).toString();
-
-    // 落地后清空搜索并回到导航视图，避免结果列表长期占位
-    m_search->lineEdit()->clear();   // 触发 textChanged → 恢复导航视图
-
-    if (settingActivated)
-        settingActivated(pageId, key);
 }
 
 void PanshiSidebar::beginGroup(const QString &title)

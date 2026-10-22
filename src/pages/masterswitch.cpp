@@ -216,6 +216,9 @@ void requestSwitch(BasePage *page, bool protectOn, const std::function<void(bool
         if (!clearAfterReboot) {
             // 完全关闭：30 秒倒计时危险确认（自带风险清单与「我已知晓」确认）
             PanshiCountdownDialog cd(page);
+            // 降为 WindowModal：30 秒倒计时期间主窗口仍可拖动
+            // （根因见 components.h::makeDialogNonBlockingWindowModal）
+            PanshiUi::makeDialogNonBlockingWindowModal(&cd);
             if (cd.exec() != QDialog::Accepted) {
                 onDone(false);
                 return;

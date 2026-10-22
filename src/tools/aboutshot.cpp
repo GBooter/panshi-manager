@@ -22,6 +22,7 @@
 #include <QPixmap>
 #include <QRegion>
 #include <QTextStream>
+#include <QWidget>
 
 #include <cstdlib>
 
@@ -57,7 +58,7 @@ QStringList visibleTexts(QWidget *w)
     return out;
 }
 
-void shoot(PanshiAboutDialog *d, bool dark, const QString &path)
+QImage shoot(PanshiAboutDialog *d, bool dark, const QString &path)
 {
     // 先切主题再 show：布局与调色板都定下来后 grab 才是最终观感。
     // 主题切换走**进程内** setPaletteType —— 本机系统级暗色不可达
@@ -70,10 +71,12 @@ void shoot(PanshiAboutDialog *d, bool dark, const QString &path)
     // 反而掩盖真实问题。探针只负责切主题 + 抓图。
     d->show();
     qApp->processEvents();
-    d->grab().save(path);
+    const QPixmap pm = d->grab();
+    pm.save(path);
     QTextStream o(stdout);
     o << "wrote " << path << "\n";
     o.flush();
+    return pm.toImage();
 }
 
 } // namespace
@@ -83,7 +86,7 @@ int main(int argc, char **argv)
     QApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("deepin"));
     app.setApplicationName(QStringLiteral("panshi-manager"));
-    app.setApplicationVersion(QStringLiteral("1.0.0"));
+    app.setApplicationVersion(QStringLiteral(PANSHI_VERSION));
 
     const QString prefix = argc > 1 ? QString::fromLatin1(argv[1])
                                     : QStringLiteral("/tmp/aboutshot");
@@ -110,7 +113,9 @@ int main(int argc, char **argv)
 
     check(has(QStringLiteral("Feelup")), QStringLiteral("作者信息「Feelup」已呈现"));
     check(has(QStringLiteral("磐石设置")), QStringLiteral("应用名已呈现"));
-    check(has(QStringLiteral("1.0.0")), QStringLiteral("版本号已呈现"));
+    // 期望值取自编译期注入的版本宏：若界面仍写死旧版本号，这条断言会 FAIL
+    check(has(QStringLiteral(PANSHI_VERSION)),
+          QStringLiteral("版本号已呈现且与包版本一致（%1）").arg(QStringLiteral(PANSHI_VERSION)));
     check(has(QStringLiteral("主页")), QStringLiteral("主页行已呈现"));
     check(has(QStringLiteral("GPL")), QStringLiteral("协议行已呈现"));
     // LinkRow 刻意不带 Q_OBJECT（项目约定：组件层除必须动画的 PanhiRow 外
@@ -181,7 +186,35 @@ int main(int argc, char **argv)
     check(d->width() >= 520, QStringLiteral("宽度不小于设定的下限 520（实际 %1）").arg(d->width()));
     check(d->height() > 300, QStringLiteral("高度合理（实际 %1）").arg(d->height()));
 
-    shoot(d, false, prefix + QStringLiteral("_light.png"));
+    const QImage light = shoot(d, false, prefix + QStringLiteral("_light.png"));
+
+    // ---- 窗口必须整片不透明（2026-10-05 用户反馈「上方还是透明的」）----
+    // 判据用**真实 grab() 图**，不用 render()：render() 会把已隐藏的子控件也
+    // 画出来，于是「某个隐藏层恰好不透明」会骗过断言（实测确实会假 PASS）。
+    // 采样点取水平中央/四分之一处，避开圆角与可能的窗口阴影边距。
+    const qreal dpr = light.width() / qreal(qMax(1, d->width()));
+    const auto alphaAt = [&light, dpr](int lx, int ly) {
+        const int px = qBound(0, qRound(lx * dpr), light.width() - 1);
+        const int py = qBound(0, qRound(ly * dpr), light.height() - 1);
+        return light.pixelColor(px, py).alpha();
+    };
+    int firstOpaque = -1;
+    for (int py = 0; py < light.height(); ++py) {
+        if (light.pixelColor(light.width() / 2, py).alpha() == 255) {
+            firstOpaque = py;
+            break;
+        }
+    }
+    o << "  顶部首个不透明物理行 y=" << firstOpaque
+      << "（逻辑 " << (firstOpaque < 0 ? -1.0 : firstOpaque / dpr) << "）\n";
+    o.flush();
+
+    for (int ly : {15, 30, 45, 60, 75, 90}) {
+        check(alphaAt(d->width() / 2, ly) == 255,
+              QStringLiteral("窗口上方 y=%1 不透明（壁纸不会透出）").arg(ly));
+    }
+    check(alphaAt(d->width() / 4, 25) == 255, QStringLiteral("标题栏左段不透明"));
+    check(alphaAt(d->width() * 3 / 4, 25) == 255, QStringLiteral("标题栏右段不透明"));
 
     DGuiApplicationHelper::instance()->setPaletteType(
         DGuiApplicationHelper::DarkType);

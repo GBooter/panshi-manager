@@ -39,8 +39,8 @@ enum class PageId
 /** 「备份与版本」页的子页 */
 enum class SubPageId
 {
-    Snapshots = 0,    // 备份快照
-    Deploys,          // 系统版本
+    Snapshots = 0,    // 系统快照（可还原的备份点）
+    Deploys,          // 系统部署实例（可启动的一整套系统）
 };
 
 class MainWindow : public DMainWindow
@@ -90,7 +90,12 @@ public:
     /** 通知"查看详情"定位：跳转磁盘占用页并选中指定日期 */
     void showDiskDate(const QDate &date);
 
-    /** 设置搜索索引（供页面在构造时注册条目；阶段 4） */
+    /**
+     * 设置搜索索引（供页面在构造时注册条目；阶段 4）
+     *
+     * ⚠️ 2026-10-06 移除侧栏搜索后已无调用者，**故意保留**：
+     * 恢复搜索功能时需要它（页面侧注册入口）。删除前先确认不再恢复搜索。
+     */
     PanshiUi::SettingIndex *settingIndex() { return &m_settingIndex; }
 
     /**
@@ -106,11 +111,18 @@ private:
     void initSidebar();
     void initContent();
 
+    /** 标题栏菜单加入「语言」子菜单（中/英/跟随系统），切换即重启生效 */
+    void setupLanguageMenu();
+    /** 写入语言偏好并重启自身以加载目标语言 */
+    void switchLanguage(const QString &code);
+
     /**
      * 设置搜索落地：切到目标页 → 让页面按 targetKey 定位并高亮该行。
      *
      * 为什么让页面自己定位：索引只记「标题」，不持有控件指针（避免页面重建后
      * 悬垂）。页面用 PanshiRow::title() 自行比对，是本项目「注册点」范式的延续。
+     *
+     * ⚠️ 2026-10-06 移除侧栏搜索后已无调用者，**故意保留**（恢复搜索时接回）。
      */
     void gotoSetting(int pageId, const QString &targetKey);
 

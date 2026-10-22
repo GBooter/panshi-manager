@@ -1,7 +1,7 @@
 Source: panshi-manager
 Section: admin
 Priority: optional
-Maintainer: Deepin Packages Builder <packages@deepin.com>
+Maintainer: Feelup <testangel@163.com>
 Build-Depends:
  debhelper-compat (= 13),
  cmake,

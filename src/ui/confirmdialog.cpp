@@ -35,12 +35,19 @@ bool askConfirm(QWidget *parent, const ConfirmRequest &req)
     // 不可逆高危操作：保留倒计时安全等待（方案 §5.2 注意 11）
     if (req.countdownSeconds > 0) {
         PanshiCountdownDialog dlg(parent);
+        // 降为 WindowModal：否则 exec() 的应用级 grab 会让主窗口在整个倒计时
+        // 期间拖不动（用户报「弹了提示后窗口就拖不动」的根因，详见
+        // components.h::makeDialogNonBlockingWindowModal 的完整说明）。
+        PanshiUi::makeDialogNonBlockingWindowModal(&dlg);
         return dlg.exec() == QDialog::Accepted;
     }
 
     const bool danger = (req.level != DialogLevel::Normal);
 
     DDialog dlg(parent);
+    disableDialogTransparency(&dlg);   // 现已为空操作：保留 DTK 原生模糊渲染（见 components.cpp 修复注释）
+    // 同上：确认框开着时主窗口仍应可拖（模态语义只约束"别去点主窗口别处"）
+    makeDialogNonBlockingWindowModal(&dlg);
     dlg.setTitle(req.title);
     dlg.setIcon(themedIcon(iconNameFor(req.level), fallbackFor(req.level)));
     if (!req.message.isEmpty())

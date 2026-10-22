@@ -3,7 +3,9 @@
 
 #include <QProcess>
 #include <QFile>
+#include <QFileInfo>
 #include <QDir>
+#include <QProcessEnvironment>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -432,14 +434,39 @@ QList<DeployInfo> getDeploys()
         d.time = o.value(QStringLiteral("Time")).toVariant().toLongLong();
         d.isBooted = o.value(QStringLiteral("IsBooted")).toBool();
         d.isRollbackBackup = o.value(QStringLiteral("IsRollbackBackup")).toBool();
+        d.index = o.value(QStringLiteral("Index")).toInt();
+        d.hidden = o.value(QStringLiteral("Hidden")).toBool();
         list.append(d);
     }
     return list;
 }
 
-CommandResult undeploy(int index)
+QStringList undeployArgs(const QString &commitId)
 {
-    return runCtl(QStringList() << "admin" << "undeploy" << QString::number(index), true, 600000);
+    return QStringList() << QStringLiteral("admin") << QStringLiteral("undeploy") << commitId;
+}
+
+CommandResult undeploy(const QString &commitId)
+{
+    // 传 commitId 而非行下标：ctl 的 Index 在隐藏主线场景下会出现两条都是 0，
+    // 按下标删除必然误伤；commitId 唯一且稳定，刷新后也不会错位。
+    return runCtl(undeployArgs(commitId), true, 600000);
+}
+
+bool isDeployDeletable(const DeployInfo &d)
+{
+    // 判据（单一真相，UI 按钮启用态与 tooltip 都读这里）。
+    //
+    // ⚠️ 必须**显式**排除 isBooted，不能依赖「当前运行的那条一定带 hidden 标记」
+    // 这个隐含假设：hidden 来自 ctl 的 Hidden 字段，一旦某个版本的 ctl 没给当前
+    // 运行项打标（原列表里两条的 hidden 只覆盖「替换主线」），按钮就会对
+    // **正在运行的系统**亮起 —— 点了就是把当前系统删掉，属于不可逆的事故。
+    // 这里按 fail-closed 处理：判不准的一律不可删。
+    if (d.isBooted)          // 当前正在运行
+        return false;
+    if (d.hidden)            // 待生效的替换主线，受系统保护
+        return false;
+    return !d.commitId.isEmpty();
 }
 
 // ----------------------------------------------------------------------
@@ -646,6 +673,102 @@ CommandResult cleanUpgradeCache(bool allCache)
 }
 
 // ----------------------------------------------------------------------
+// 待更新软件包明细（apt 只读视图）
+// ----------------------------------------------------------------------
+namespace {
+
+/**
+ * 以固定英文 locale 跑一个只读进程，返回 stdout（失败返回空串）。
+ *
+ * LC_ALL=C 是硬约束：`apt list --upgradable` 的 "[upgradable from: …]"
+ * 提示随 locale 变中文（实测本机 zh_CN 下为「可从该版本升级：…」），
+ * 解析正则以英文措辞书写，输出语言必须钉死，不能随用户环境漂移。
+ *
+ * 刻意不走 runProcess() 的提权链（sudo -n / pkexec）：
+ *   · 本查询只读 /var/lib/apt/lists 与 /var/lib/dpkg/status，无需 root；
+ *   · 磐石系统上 /usr/bin/apt 是指向 immutable-adapter.sh 的软链，
+ *     root 调它会先 remount /usr 才放行（失败时整个查询挂掉），
+ *     直接调 apt.real 真身可完全绕开这一圈。
+ */
+QString runReadonlyApt(const QString &program, const QStringList &args, int timeoutMs)
+{
+    QProcess proc;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
+    proc.setProcessEnvironment(env);
+    proc.start(program, args);
+    if (!proc.waitForStarted(5000))
+        return QString();
+    if (!proc.waitForFinished(timeoutMs)) {
+        proc.kill();
+        proc.waitForFinished(3000);
+        return QString();
+    }
+    if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+        return QString();
+    return QString::fromUtf8(proc.readAllStandardOutput());
+}
+
+} // namespace
+
+QList<UpgradablePackage> queryUpgradablePackages()
+{
+    QList<UpgradablePackage> pkgs;
+
+    // 磐石系统优先用 apt.real（真身，避开 adapter 的 remount 接管）；
+    // 非磐石系统（无 .real 后缀）直接回退 apt 本体。
+    QString program = QStringLiteral("/usr/bin/apt.real");
+    if (!QFileInfo::exists(program))
+        program = QStringLiteral("apt");
+
+    const QString out = runReadonlyApt(
+        program, QStringList{QStringLiteral("list"), QStringLiteral("--upgradable")}, 60000);
+    if (out.isEmpty())
+        return pkgs;
+
+    // 行格式（LC_ALL=C）：
+    //   <name>/<origin> <newVersion> <arch> [upgradable from: <oldVersion>]
+    // 首行 "Listing..." 不匹配正则，自然跳过。
+    static const QRegularExpression re(
+        QStringLiteral("^([^\\s/]+)/\\S+\\s+(\\S+)\\s+(\\S+)\\s+\\[upgradable from:\\s*([^\\]]+)\\]"));
+    for (const QString &line : out.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+        const QRegularExpressionMatch m = re.match(line.trimmed());
+        if (!m.hasMatch())
+            continue;
+        UpgradablePackage p;
+        p.name = m.captured(1);
+        p.newVersion = m.captured(2);
+        p.oldVersion = m.captured(4).trimmed();
+        pkgs.append(p);
+    }
+    if (pkgs.isEmpty())
+        return pkgs;
+
+    // 批量补 Section（分类依据）。--no-all-versions 只出候选版本那条 stanza，
+    // 与待更新版本一致；某个包查不到时 Section 留空，分类退化为名前缀规则。
+    QStringList names;
+    for (const UpgradablePackage &p : pkgs)
+        names.append(p.name);
+    const QString meta = runReadonlyApt(
+        QStringLiteral("apt-cache"),
+        QStringList{QStringLiteral("show"), QStringLiteral("--no-all-versions")} + names, 60000);
+    QHash<QString, QString> sections;
+    QString current;
+    for (const QString &line : meta.split(QLatin1Char('\n'))) {
+        if (line.startsWith(QStringLiteral("Package:"))) {
+            current = line.mid(8).trimmed();
+        } else if (line.startsWith(QStringLiteral("Section:")) && !current.isEmpty()) {
+            sections.insert(current, line.mid(8).trimmed());
+            current.clear();
+        }
+    }
+    for (UpgradablePackage &p : pkgs)
+        p.section = sections.value(p.name);
+
+    return pkgs;
+}
+
+// ----------------------------------------------------------------------
 // 回滚状态管理
 // ----------------------------------------------------------------------
 RollbackState getRollbackState()
@@ -820,6 +943,29 @@ QString jsonField(const QJsonObject &obj, const QStringList &names, const QStrin
         if (obj.contains(n)) return obj.value(n).toString();
     }
     return def;
+}
+
+QString friendlyExecError(const QString &raw)
+{
+    if (raw.trimmed().isEmpty())
+        return QObject::tr("命令执行失败");
+
+    // pkexec / sudo 常见英文错误 → 中文友好提示（识别不出时原样返回，不丢信息）
+    const QString t = raw.trimmed();
+    if (t.contains(QStringLiteral("Request dismissed")))
+        return QObject::tr("已取消授权，未执行操作");
+    if (t.contains(QStringLiteral("Not authorized")))
+        return QObject::tr("没有权限执行此操作");
+    if (t.contains(QStringLiteral("Authentication failure")))
+        return QObject::tr("身份验证失败，请检查密码后重试");
+    if (t.contains(QStringLiteral("incorrect password")) ||
+        t.contains(QStringLiteral("wrong password")))
+        return QObject::tr("密码错误，请重试");
+    if (t.contains(QStringLiteral("permission denied")))
+        return QObject::tr("权限不足，无法执行此操作");
+    if (t.contains(QStringLiteral("timeout")))
+        return QObject::tr("命令执行超时");
+    return t;
 }
 
 } // namespace Panshi

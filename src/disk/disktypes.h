@@ -17,6 +17,15 @@ struct DiskItem {
     bool    isDir = true;
 };
 
+// 全盘视角：根分区之外的其它分区挂载信息（按设备去重后的主挂载点）
+struct DiskMountInfo {
+    QString device;      // 设备路径，如 /dev/nvme0n1p6
+    QString mountPoint;  // 主挂载点，如 /persistent
+    QString fsType;      // ext4 / xfs / vfat ...
+    qint64  capacity = 0; // 分区总容量（字节）
+    qint64  used = 0;     // 分区已用（字节）
+};
+
 // 高频轮询轻量样本
 struct DiskSample {
     QDateTime ts;

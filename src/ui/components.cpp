@@ -4,11 +4,15 @@
 
 #include <DConfig>
 #include <DGuiApplicationHelper>
+#include <DPlatformHandle>
+
+#include <QWindow>
 
 #include <QAbstractButton>
 #include <QEasingCurve>
 #include <QGridLayout>
 #include <QList>
+#include <QMainWindow>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPointer>
@@ -65,8 +69,50 @@ void fillRounded(QPainter *p, const QRectF &rect, qreal radius, const QColor &c)
     p->drawRoundedRect(rect, radius, radius);
 }
 
-DFontSizeManager::SizeType sizeTypeFor(TextLevel lv)
+/**
+ * 对话框可见性守卫：Show 时冻结主窗口内容区、Hide 时恢复。
+ *
+ * ⚠️ 为什么不能「在 makeDialogNonBlockingWindowModal 调用时立即冻结」：
+ *   各页面在启动时即被整体构造（QStackedWidget 全量 new），磁盘空间页的
+ *   设置对话框就是在构造期创建的 —— 若在构造时冻结，对话框「只构造不显示」
+ *   则冻结永远不会被解除，整个内容区永久点不动（2026-10-06 用户报
+ *   「软件里所有内容都没法点击」的根因）。故冻结必须挂到 Show 事件上。
+ *
+ * 用事件过滤而非 `QDialog::finished`：参数只需 `QWidget*`，对 DDialog
+ * （继承 DAbstractDialog）与 PanshiCountdownDialog 等**并非 QDialog 子类**的
+ * DTK 弹窗同样成立 —— 它们没有 `finished` 信号。
+ * Show/Hide 是所有 QWidget 都有的判据，统一、不漏。
+ *
+ * 生命周期：`installEventFilter` 不会接管对象寿命，故本守卫把自己
+ * 挂在被监视的 dialog 上（setParent(dialog)），随 dialog 一起销毁。
+ */
+class DialogFreezeGuard : public QObject
 {
+public:
+    explicit DialogFreezeGuard(std::function<void()> freeze,
+                               std::function<void()> restore,
+                               QObject *parent = nullptr)
+        : QObject(parent), m_freeze(std::move(freeze)), m_restore(std::move(restore))
+    {
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *e) override
+    {
+        if (e->type() == QEvent::Show) {
+            m_freeze();          // setEnabled(false) 幂等，重复显示可重复冻结
+        } else if (e->type() == QEvent::Hide) {
+            m_restore();         // setEnabled(true) 幂等，重复关闭可重复恢复
+        }
+        return QObject::eventFilter(watched, e);
+    }
+
+private:
+    std::function<void()> m_freeze;
+    std::function<void()> m_restore;
+};
+
+DFontSizeManager::SizeType sizeTypeFor(TextLevel lv){
     switch (lv) {
     case TextLevel::PageTitle:
     case TextLevel::Value:
@@ -797,7 +843,12 @@ PanshiInlineBanner::PanshiInlineBanner(QWidget *parent)
     m_close->setAccessibleName(QObject::tr("关闭提示"));
     m_close->hide();
     lay->addWidget(m_close, 0, Qt::AlignVCenter);
-    QObject::connect(m_close, &DPushButton::clicked, this, [this] { hide(); });
+    // 先发信号再隐藏：调用方据此把这条告警记进「已关闭 / 告警历史」，
+    // 与「内容清空后自动收起」区分开（详见 components.h::setClosable 注释）。
+    QObject::connect(m_close, &DPushButton::clicked, this, [this] {
+        Q_EMIT dismissed();
+        hide();
+    });
 
     refresh();   // 初始化图标与正文语义
 }
@@ -917,9 +968,12 @@ PanshiStateCard::PanshiStateCard(const QString &title, QWidget *parent)
     setMinimumWidth(Size::StateCardMinWidth);
 }
 
-void PanshiStateCard::setValue(const QString &value, Semantic s)
+void PanshiStateCard::setValue(const QString &value, Semantic s, TextLevel level)
 {
     m_value->setText(value);
+    // 字号随内容性质重绑（默认 T2；日期类调用方传 ValueSmall→T4）。
+    // 与 makeLabel 同一入口 DFontSizeManager::bind，重复 bind 为幂等替换。
+    DFontSizeManager::instance()->bind(m_value, sizeTypeFor(level));
     applySemantic(m_value, s);
 }
 
@@ -1301,6 +1355,119 @@ void finalizeTableAccessible(QTableWidget *t)
             it->setData(Qt::AccessibleTextRole, a11y);
         }
     }
+}
+
+void disableDialogTransparency(QWidget *dialog)
+{
+    if (!dialog)
+        return;
+
+    // ------------------------------------------------------------------
+    // ★ 2026-10-06 修复：本函数改为「有意保留 DTK 原生渲染」的空操作
+    // ------------------------------------------------------------------
+    // 曾经的实现：winId() + DPlatformHandle::setEnableBlurWindow(false) 关掉
+    // 窗口模糊，想得到「不透明、无毛玻璃」的弹窗。实测（X11 + kwin + dxcb）：
+    //
+    //   ① 关掉模糊后，DDialog 背景是**半透明**的（圆角 + 阴影设计，见开发指南
+    //      D2 同款教训），没有毛玻璃兜底时会把底层页面文字直接透出来 ——
+    //      用户报「奇怪的透明弹窗，能看到页面文字」；
+    //   ② 在 exec() 之前对未显示的弹窗强行 winId() + 挂 DPlatformHandle，
+    //      与 makeDialogNonBlockingWindowModal 的冻结交互后弹窗完全无响应
+    //      （悬停/点击/按键全失效，Esc 关不掉）。
+    //
+    // 结论：不要跟 DTK 的弹窗渲染对抗。保留默认模糊 = 平台原生外观，
+    // 背景由毛玻璃兜底，弹窗正常不透明。因此本函数现在什么都不做，
+    // 保留签名仅为兼容各调用点；新增代码请直接使用 DDialog 默认渲染。
+    //
+    // 若未来确需「无模糊实底」弹窗，正确做法是给 DDialog 的**内容区**
+    // 补不透明底色（autoFillBackground + 调色板），而不是关窗口模糊。
+    Q_UNUSED(dialog);
+}
+
+void makeDialogNonBlockingWindowModal(QWidget *dialog)
+{
+    if (!dialog)
+        return;
+
+    // ------------------------------------------------------------------
+    // 「窗口拖不动」的真正根因（2026-10-06 X11 实证 + 探针 panshi-dragmodalprobe）
+    // ------------------------------------------------------------------
+    // 现象：用户报「能点、能最大化最小化，就是拖不动」，且**在弹出某个提示之后
+    // 出现**。此前几轮怀疑 CSD / dxcb 钩子，均被反向验证推翻。
+    //
+    // 实测：标题栏 13 点位 12 可拖（唯一例外 x=5 是窗口圆角），与 CSD 无关
+    // ⇒ 无条件状态下拖拽是好的。触发条件是**模态对话框打开期间**。
+    //
+    // ⚠️ 走过的弯路（勿重复）：先把 ApplicationModal 降为 WindowModal，
+    //   看着像"降级"，探针一跑就露馅 —— **DTitlebar 是主窗口的子控件**，
+    //   WindowModal 的 grab 范围恰好覆盖父窗口，标题栏照样收不到 MousePress，
+    //   拖拽依旧失效。探针场景 4 实测：modality 已是 WindowModal，
+    //   而 activeModalWidget() 仍非空 ⇒ 仍在阻断。
+    //   ⇒ 任何形式的"模态"都不解决问题，必须让主窗口**根本不是模态目标**。
+    //
+    // 采用方案：对话框设为 NonModal，改为「手动冻结」主窗口交互：
+    //   · 禁用 centralWidget（页面里所有按钮/开关都点不动）
+    //   · **保留标题栏可用**（不 disable 主窗口本身，只冻内容区）
+    //   · 对话框关闭时自动恢复
+    // 这样既保住了确认框的语义（用户不能越过对话框去操作页面），
+    // 又让窗口始终可拖 —— 用户报的现象彻底消失。
+    //
+    // ⚠️ 前提：必须有 parent，否则找不到要冻结的主窗口，直接不改。
+    QWidget *parent = dialog->parentWidget();
+    if (!parent)
+        return;
+
+    QWidget *top = parent->window();
+    if (!top || top == dialog)
+        return;
+
+    // DMainWindow 继承 QMainWindow，centralWidget() 正是页面容器
+    QWidget *content = qobject_cast<QMainWindow *>(top)
+                           ? qobject_cast<QMainWindow *>(top)->centralWidget()
+                           : nullptr;
+    if (!content)
+        return;   // 认不出来就不动，绝不盲改
+
+    // ------------------------------------------------------------------
+    // ★ 2026-10-06 修复：冻结内容区不得波及对话框本身
+    // ------------------------------------------------------------------
+    // 症状：用户报「点击按钮后出现奇怪的透明弹窗，无法关闭、无法操作，
+    //       且软件其它位置也无法操作」。
+    // 根因：对话框以页面为父对象（如 ProtectionPage），页面在 content 子树内。
+    //       冻结 = content->setEnabled(false)，Qt 的禁用状态沿对象树传播，
+    //       对话框自身的 isEnabled() 变 false（父链查询），于是悬停/点击/按键
+    //       全部被忽略 —— 看起来就是「冻住的无响应弹窗」。
+    //       同时 exec() 使对话框成为模态，主窗口内容区本就被模态 grab 阻断，
+    //       两者叠加便呈现用户描述的全部症状。
+    // 修复：把对话框改挂到**顶层窗口**（不在 content 子树内），
+    //       冻结内容区时不会波及对话框；模态语义仍由「内容区禁用」保证。
+    // ⚠️ 必须在安装冻结守卫之前重挂 —— 冻结守卫在 Show 时冻结，Show 之后
+    //    对话框再搬出子树就来不及了（禁用已沿旧父链传播过）。
+    dialog->setParent(top);
+    // setParent(QWidget*) 不改变窗口标志；保险起见确认仍是独立窗口
+    if (!dialog->isWindow())
+        dialog->setWindowFlag(Qt::Window, true);
+
+    dialog->setWindowModality(Qt::NonModal);
+    // 标题栏不在 content 内，故不会被动到 —— 这正是本方案能拖的关键。
+    // ⚠️ 冻结必须在对话框 **Show 之后** 才生效（见 DialogFreezeGuard 注释：
+    //    构造期冻结且不显示会让内容区永久点不动 —— 本轮点击失效的根因）。
+    // 用 QPointer 防悬垂：dialog 析构时 content 可能先没（父子顺序不保证）。
+    QPointer<QWidget> guard(content);
+    auto freeze = [guard] {
+        if (guard)
+            guard->setEnabled(false);
+    };
+    auto restore = [guard] {
+        if (guard)
+            guard->setEnabled(true);
+    };
+    dialog->installEventFilter(new DialogFreezeGuard(freeze, restore, dialog));
+    // 未及 Hide 就被析构（提前 deleteLater / 父链销毁）也要恢复
+    QObject::connect(dialog, &QObject::destroyed, dialog, [guard] {
+        if (guard)
+            guard->setEnabled(true);
+    });
 }
 
 } // namespace PanshiUi

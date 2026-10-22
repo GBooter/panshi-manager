@@ -34,11 +34,14 @@ const char *kStrategyReboot3 = "reboot3";
 const char *kStrategyNone = "none";
 
 /**
- * 操作列固定宽度。
+ * 操作列固定下限宽度。
  * 需容纳「还原」+「删除」两个按钮（含间距与内边距）——
  * 72px（QHeaderView 默认下限）会把文案截成单字，170px 是实测舒适值。
  */
 constexpr int kOperationColWidth = 170;
+
+/** 名称列下限宽度：避免用户把名称拖到不可读（悬停省略仍有 tooltip，但太窄无意义） */
+constexpr int kNameMinWidth = 140;
 
 } // namespace
 
@@ -70,11 +73,21 @@ SnapshotsPage::SnapshotsPage(MainWindow *win)
     m_banner->hide();
     lay->addWidget(m_banner);
 
-    // 策略提示条：原先自绘 QFrame + QSS 双 objectName，
-    // 现改为语义 Banner（图标 + 柔和底 + 中性正文），与全应用反馈样式统一
-    m_policyBar = new PanshiUi::PanshiInlineBanner(scrollContent);
-    m_policyBar->setSemantic(PanshiUi::Semantic::Accent);
-    lay->addWidget(m_policyBar);
+    // ---- 策略状态三卡（2026-10-06 重设计）----
+    // 原先的整条 Accent Banner（「备份数量上限: 不限制 · 当前 1 个 · 回滚前安全备份: 未启用」）
+    // 读起来像一条提醒，但它是**状态数据**不是提醒 —— 卡片化的「标签 + 大值」更直观，
+    // 也与总览页的状态卡设计语言一致。窄窗由 PanshiResponsiveCardRow 自动折行不溢出。
+    m_statRow = new PanshiUi::PanshiResponsiveCardRow(3, scrollContent);
+    m_statLimit = new PanshiUi::PanshiStateCard(tr("备份数量上限"), m_statRow);
+    m_statCount = new PanshiUi::PanshiStateCard(tr("当前数量"), m_statRow);
+    m_statRollback = new PanshiUi::PanshiStateCard(tr("回滚前安全备份"), m_statRow);
+    m_statRow->addCard(m_statLimit);
+    m_statRow->addCard(m_statCount);
+    m_statRow->addCard(m_statRollback);
+    lay->addWidget(m_statRow);
+    // 宽度喂入交给基类（同时监听 viewport Resize 与 showEvent，覆盖窗口缩放与
+    // 隐藏页首次 show 两条路径，见 overviewpage.cpp 同款用法）。
+    registerResponsiveCardRow(m_statRow, scroll, PanshiUi::Space::XL * 2);
 
     // L2 局部加载：刷新时不盖整页，表格保持可读
     m_busy = new PanshiUi::PanshiLocalLoading(tr("正在读取快照列表..."), scrollContent);
@@ -82,8 +95,7 @@ SnapshotsPage::SnapshotsPage(MainWindow *win)
     lay->addWidget(m_busy);
 
     // 表格：列宽预算按「默认窗口态」倒推，而不是按最大化。
-    // 实测默认启动窗口（main.cpp 的 w.show()）表格视口约 761px，
-    // 因此固定宽度列合计必须 ≤ 约 580px，其余交给弹性列吸收。
+    // 实测默认启动窗口（main.cpp 的 w.show()）表格视口约 761px。
     // 描述列已移除（自由长度文本无法预算宽度，完整内容改由行内 tooltip 承载，
     // 详见 docs/UI-重构进度-阶段3-6-备份与版本页.md §九）。
     m_table = new QTableWidget(0, 6, scrollContent);
@@ -95,27 +107,34 @@ SnapshotsPage::SnapshotsPage(MainWindow *win)
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_table->setWordWrap(false);
+    m_table->setShowGrid(false);   // 与磁盘页一致：去网格更清爽，列边界由表头区分
+    m_table->horizontalHeader()->setFixedHeight(42);
     PanshiUi::setTableAccessibleName(m_table, tr("系统备份列表"));
     auto *hh = m_table->horizontalHeader();
     hh->setSectionsMovable(false);
+    // 列宽：全部列 Interactive，用户可自由拖拽调整任意列宽。
+    //
+    // 背景（2026-10-06 用户反馈「列宽不可以调整」）：原方案「名称 Stretch + 操作 Fixed」
+    // 有副作用——Stretch 列的手柄是死的（QHeaderView 不允许用户拖动 Stretch 节），
+    // Fixed 列同样不可拖，于是两列最重要的列（名称要看清、操作用不到）都调不了，
+    // 用户试一次就得出「列宽不能调」的结论。
+    //
+    // 新方案：六列全部 Interactive，取消 Stretch/Fixed：
+    //  - 名称列给 180 初始宽，宽窗下的剩余留白由用户拖宽名称吸收；
+    //  - 操作列保留下限钳制：用户拖窄到 kOperationColWidth 以下时由
+    //    sectionResized 处理器弹回，保证「还原/删除」按钮不被截成单字；
+    //  - 窄窗溢出交给表格自身横向滚动条（下方 SizePolicy=Ignored 方案不变）。
     for (int i = 0; i < 6; ++i)
         hh->setSectionResizeMode(i, QHeaderView::Interactive);
-    // 弹性归属：只有「名称」列 Stretch，操作列改为 Fixed 固定宽度。
-    //
-    // 为什么不让操作列也 Stretch：Stretch 模式下列宽由 QHeaderView 在每次布局时
-    // 重算，setColumnWidth 对它无效——空间不足时它会一路缩到 minimumSectionSize
-    // （72px），两个按钮文案被截成单字，且外部无法校正（试过 geometriesChanged
-    // 回调，无法稳定生效且有递归风险）。改用 Fixed 后宽度完全由我们掌握。
-    //
-    // 代价：横向空间不足时只有名称列会被压缩（它有 ElidedLabel 兜底，是唯一
-    // 适合被压缩的列），压缩到下限后整表宽度仍超出则出现横向滚动条。
-    // 由于固定列合计 443 + 名称下限 72 + 操作 170 = 685px < 默认视口 761px，
-    // 默认窗口态不会触发滚动条。
-    hh->setSectionResizeMode(0, QHeaderView::Stretch);
-    hh->setSectionResizeMode(5, QHeaderView::Fixed);
     hh->setMinimumSectionSize(72);
     hh->setStretchLastSection(false);
     m_table->setColumnWidth(5, kOperationColWidth);
+    connect(hh, &QHeaderView::sectionResized, this, [hh](int logical, int, int newSize) {
+        if (logical == 5 && newSize < kOperationColWidth)
+            hh->resizeSection(5, kOperationColWidth);   // 弹回后再次触发 == 不成立，无递归
+        else if (logical == 0 && newSize < kNameMinWidth)
+            hh->resizeSection(0, kNameMinWidth);        // 名称列下限，避免被压到不可读
+    });
 
     // 关键：让表格能真正缩进视口，横向溢出交给**表格自己的**滚动条兜底。
     //
@@ -159,9 +178,8 @@ SnapshotsPage::SnapshotsPage(MainWindow *win)
     m_empty->hide();
     lay->addWidget(m_empty);
 
-    auto *note = Ui::rowDesc(tr("说明: 系统初始备份受磐石系统保护, 不可删除或重命名。"
-                                "回滚前备份带「回滚前」标识, 可在回滚成功后手动删除。"
-                                "备份描述已并入名称列, 悬停行首即可查看全文。"));
+    auto *note = Ui::rowDesc(tr("提示：悬停名称列可查看完整描述与用途；"
+                                "系统初始备份受磐石保护，不可删除。"));
     lay->addWidget(note);
 
     // 本页自带 L2 加载控件，关闭整页遮罩（加载态三档分级，方案 §4.6）
@@ -173,15 +191,15 @@ void SnapshotsPage::applyColumnWidths()
     if (m_colsSized)
         return;
     m_colsSized = true;
-    // 预算（默认窗口态视口 ≈761px）：
-    //   固定列 类型110 + 时间145 + 空间100 + ID 88 = 443px
-    //   操作列 Fixed 170px；名称列 Stretch 吸收其余宽度
-    //   443 + 170 + 名称下限 72 = 685px < 761px → 默认窗口态无横向滚动条
-    m_table->setColumnWidth(1, 110);
-    m_table->setColumnWidth(2, 145);
-    m_table->setColumnWidth(3, 100);
-    m_table->setColumnWidth(4, 88);
-    m_table->setColumnWidth(0, 140);   // 名称初始宽度，用户可拖动覆盖
+    // 预算（默认窗口态视口 ≈761px）——无 Stretch 列，全列可拖：
+    //   名称 180 + 类型 85 + 创建时间 150 + 占用 90 + ID 85 + 操作 170 = 760px
+    //   ≈ 视口宽，默认窗口态不出横向滚动条；用户拖宽某列导致总宽超出时，
+    //   由表格内部横向滚动条兜底（下方 SizePolicy=Ignored + AsNeeded 方案）。
+    m_table->setColumnWidth(0, 180);
+    m_table->setColumnWidth(1, 85);
+    m_table->setColumnWidth(2, 150);
+    m_table->setColumnWidth(3, 90);
+    m_table->setColumnWidth(4, 85);
     m_table->setColumnWidth(5, kOperationColWidth);
 }
 
@@ -233,8 +251,14 @@ void SnapshotsPage::onLoaded(const QVariant &res)
     render(snaps, sizes, state);
 }
 
-void SnapshotsPage::updatePolicyText(int count, const RollbackState &state)
+void SnapshotsPage::updatePolicyCards(int count, const RollbackState &state)
 {
+    // 备份数量上限：策略固定为不限制（后端无上限概念）
+    m_statLimit->setValue(tr("不限制"));
+    // 当前数量
+    m_statCount->setValue(tr("%1 个").arg(count));
+    // 回滚前安全备份状态（沿用后端 status → 可读文案的映射；有在途/终态时
+    // 以警示色承载，语义与旧 Banner 的 Warning 一致）
     QString statusTxt = tr("未启用");
     if (state.valid) {
         const QString st = state.status;
@@ -245,10 +269,9 @@ void SnapshotsPage::updatePolicyText(int count, const RollbackState &state)
         else if (st == QLatin1String("cancelled")) statusTxt = tr("已取消");
         else statusTxt = tr("进行中");
     }
-    m_policyBar->setSemantic(state.valid ? PanshiUi::Semantic::Warning
-                                        : PanshiUi::Semantic::Accent);
-    m_policyBar->setText(tr("备份数量上限: %1　·　当前 %2 个　·　回滚前安全备份: %3")
-                             .arg(tr("不限制")).arg(count).arg(statusTxt));
+    m_statRollback->setValue(statusTxt,
+                             state.valid ? PanshiUi::Semantic::Warning
+                                         : PanshiUi::Semantic::Normal);
 }
 
 const SnapshotInfo *SnapshotsPage::findSnapshot(const QString &id) const
@@ -268,7 +291,7 @@ void SnapshotsPage::render(const QList<SnapshotInfo> &snaps,
     m_sizes = sizes;
     m_table->setRowCount(0);
 
-    updatePolicyText(snaps.size(), state);
+    updatePolicyCards(snaps.size(), state);
 
     // 空列表：表格整体让位给空状态控件（含「创建备份」主操作）
     const bool empty = snaps.isEmpty();
@@ -380,6 +403,10 @@ void SnapshotsPage::onCreate()
     }
 
     DDialog dlg(this);
+    PanshiUi::disableDialogTransparency(&dlg);   // 关闭 DTK 弹窗默认的模糊/透明效果
+    // 降为 WindowModal：对话框开着时主窗口仍可拖动
+    // （根因见 components.h::makeDialogNonBlockingWindowModal）
+    PanshiUi::makeDialogNonBlockingWindowModal(&dlg);
     dlg.setTitle(tr("创建备份"));
     dlg.setFixedWidth(480);
     auto *content = new QWidget(&dlg);

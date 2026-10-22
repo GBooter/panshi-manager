@@ -5,6 +5,11 @@ Name[en_US]=Panshi Manager
 Comment=Deepin 25 磐石系统管理工具
 Comment[en_US]=Deepin 25 immutable system management tool
 Exec=@PANSHI_BINDIR@/panshi-manager
+# 2026-10-21：由绝对路径改为主题图标名。
+# 原写法 Icon=/usr/share/icons/hicolor/scalable/apps/panshi.svg 会绕过图标主题搜索，
+# 只读系统（/usr 不可写）用户级安装时启动器仍去读 /usr 下的旧图标，与新装图标不一致。
+# 主题名同时命中 /usr/share/icons（deb 安装，postinst 已 update-icon-caches）
+# 与 ~/.local/share/icons（用户级安装）。
 Icon=panshi
 Terminal=false
 Categories=System;

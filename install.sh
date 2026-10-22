@@ -44,6 +44,11 @@ else
 
     cp build/panshi-manager "$PREFIX/bin/panshi-manager"
     cp data/icons/panshi.svg "$PREFIX/share/icons/hicolor/scalable/apps/panshi.svg"
+    # 新 Logo（2026-10-09）：同步安装各标准尺寸 PNG（四角统一大圆角）。
+    for _s in 16 22 24 32 48 64 128 256 512; do
+        mkdir -p "$PREFIX/share/icons/hicolor/${_s}x${_s}/apps"
+        cp "data/icons/panshi-${_s}.png" "$PREFIX/share/icons/hicolor/${_s}x${_s}/apps/panshi.png"
+    done
     # desktop 入口：源文件 Exec 是 @PANSHI_BINDIR@ 占位符（供 cmake
     # configure_file 用），手工安装时替换成用户级 bin 绝对路径，否则
     # 开始菜单点击会落到不存在的 /usr/bin/panshi-manager。

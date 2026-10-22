@@ -7,8 +7,6 @@
 #include "../mainwindow.h"
 
 #include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QVariantMap>
 
 DWIDGET_USE_NAMESPACE
 
@@ -41,8 +39,8 @@ ProtectionPage::ProtectionPage(MainWindow *win)
     m_banner = new PanshiInlineBanner(scrollContent);
     m_banner->hide();
     lay->addWidget(m_banner);
-    // 注册给基类：磐石开关切换（PanshiSwitch::requestSwitch）的结果也写到这里，
-    // 与 setProtect() 共用同一条反馈位（阶段 4）
+    // 注册给基类：磐石开关切换（PanshiSwitch::requestSwitch）的结果写到这里
+    // （阶段 4；setProtect 已于 2026-10-06 随「保护开关收敛」一并移除）
     setFeedbackBanner(m_banner);
 
     m_busy = new PanshiLocalLoading(QString(), scrollContent);
@@ -66,67 +64,35 @@ ProtectionPage::ProtectionPage(MainWindow *win)
     // 3 卡会粘在 1 列（3-8 实测），交基类后免疫。
     registerResponsiveCardRow(m_statRow, scroll, 24 * 2);
 
-    // ---- 说明 ----
-    auto *secInfo = new PanshiSection(tr("说明"), QString(), scrollContent);
-    auto *desc = makeLabel(
-        tr("磐石系统将核心目录(/usr 等)以只读方式挂载, 防止误操作或恶意软件破坏系统。\n"
-           "开启“可写层”将解除只读保护(适合开发调试), 关闭后恢复保护。\n"
-           "注意: 开启可写层后系统将拒绝执行快照还原。"),
-        TextLevel::Desc, Semantic::Normal);
-    desc->setWordWrap(true);
-    secInfo->content()->addWidget(desc);
-    lay->addWidget(secInfo);
-
-    // ---- 保护开关 ----
-    auto *secSwitch = new PanshiSection(tr("保护开关"), tr("永久开启或关闭磐石系统保护"),
+    // ---- 保护开关（2026-10-06 收敛为唯一控制入口）----
+    // 原先此处有三个功能重叠的控件：磐石功能开关 + 「开启保护」行 +
+    // 「关闭保护（高级操作）」折叠区（两枚按钮）。开关本身已能完整表达
+    // 全部决策（关闭 → 弹窗选临时/完全；开启 → 普通确认），其余控件只是
+    // 重复入口，并存让页面显得怪异。现只保留开关一行。
+    auto *secSwitch = new PanshiSection(tr("保护开关"),
+                                        tr("总开关：开启或关闭磐石系统保护"),
                                         scrollContent);
 
-    // 「磐石功能」同步开关行：与总览页状态互相同步
+    // 「磐石功能」同步开关行：与总览页状态互相同步；
+    // 切换流程（确认弹窗 + 后台执行 + 反馈）由 PanshiSwitch::requestSwitch 统一承担
     m_switchRow = new PanshiSwitchRow(this, false, secSwitch);
     connect(m_switchRow, &PanshiSwitchRow::switchChanged, this, [this] { m_win->refreshPanshiPages(); });
     secSwitch->content()->addWidget(m_switchRow);
-
-    // 常规操作平铺
-    m_rowEnable = new PanshiRow(secSwitch);
-    m_rowEnable->setTitle(tr("开启保护 (恢复只读)"));
-    m_rowEnable->setDescription(tr("恢复核心目录只读挂载, 需要重启系统后生效"));
-    auto *bEnable = Ui::button(tr("开启保护"), true);
-    connect(bEnable, &DPushButton::clicked, this, [this] { setProtect(true, false); });
-    m_rowEnable->addControl(bEnable);
-    secSwitch->content()->addWidget(m_rowEnable);
-
-    // 危险操作收进折叠区（默认收起，方案 §3.3）
-    auto *dangerBox = new PanshiCollapsible(tr("关闭保护（高级操作）"), secSwitch);
-    auto *dangerHost = new QWidget(dangerBox);
-    auto *dangerLay = new QVBoxLayout(dangerHost);
-    dangerLay->setContentsMargins(0, 0, 0, 0);
-    dangerLay->setSpacing(Space::S);
-
-    auto *warn = makeLabel(tr("关闭保护后核心目录将可写, 且系统拒绝执行快照还原。请仅在开发调试时短期使用。"),
-                           TextLevel::Desc, Semantic::Warning);
-    warn->setWordWrap(true);
-    dangerLay->addWidget(warn);
-
-    auto *rPerm = new PanshiRow(dangerHost);
-    rPerm->setTitle(tr("永久关闭保护 (开启可写层)"));
-    rPerm->setDescription(tr("重启后仍保持可写, 需手动再次开启保护"));
-    auto *bPerm = Ui::button(tr("永久关闭保护"), false, true);
-    connect(bPerm, &DPushButton::clicked, this, [this] { setProtect(false, false); });
-    rPerm->addControl(bPerm);
-    dangerLay->addWidget(rPerm);
-
-    auto *rTmp = new PanshiRow(dangerHost);
-    rTmp->setTitle(tr("临时关闭保护 (重启后自动恢复)"));
-    rTmp->setDescription(tr("仅本次开机生效, 重启后自动恢复只读保护"));
-    auto *bTmp = Ui::button(tr("临时关闭保护"), false, true);
-    connect(bTmp, &DPushButton::clicked, this, [this] { setProtect(false, true); });
-    rTmp->addControl(bTmp);
-    dangerLay->addWidget(rTmp);
-
-    dangerBox->setContent(dangerHost);
-    secSwitch->content()->addWidget(dangerBox);
-
     lay->addWidget(secSwitch);
+
+    // ---- 说明（置于操作区之后，作概念脚注）----
+    auto *secInfo = new PanshiSection(tr("说明"), QString(), scrollContent);
+    auto *desc = makeLabel(
+        tr("磐石系统将核心目录(/usr 等)以只读方式挂载, 防止误操作或恶意软件破坏系统。\n"
+           "开启“可写层”将解除只读保护(适合开发调试), 关闭后恢复保护。"),
+        TextLevel::Desc, Semantic::Normal);
+    desc->setWordWrap(true);
+    secInfo->content()->addWidget(desc);
+    auto *note = makeLabel(tr("注意: 开启可写层后系统将拒绝执行快照还原。"),
+                           TextLevel::Desc, Semantic::Warning);
+    note->setWordWrap(true);
+    secInfo->content()->addWidget(note);
+    lay->addWidget(secInfo);
     lay->addStretch();
 
     // ---- 设置搜索（阶段 4）：登记「磐石功能」开关行 ----
@@ -152,13 +118,13 @@ QList<PanshiUi::SettingEntry> ProtectionPage::searchableSettings() const
 
 void ProtectionPage::highlightEnableProtect()
 {
-    if (!m_rowEnable)
+    if (!m_switchRow)
         return;
-    // 折叠区内的危险操作不在此列——「开启保护」是常规操作，始终平铺可见，
-    // 因此不需要先展开折叠区；只需把行滚入视野并闪一下。
+    // 「磐石功能」开关是唯一的保护控制入口：把开关行滚入视野并闪一下。
+    // 不做自动执行——恢复只读需要用户知情后自己拨动开关确认。
     if (m_scroll && m_scroll->viewport())
-        m_scroll->ensureWidgetVisible(m_rowEnable, Space::M, Space::M);
-    m_rowEnable->flashHighlight();
+        m_scroll->ensureWidgetVisible(m_switchRow, Space::M, Space::M);
+    m_switchRow->flashHighlight();
 }
 
 void ProtectionPage::refresh()
@@ -191,44 +157,4 @@ void ProtectionPage::onLoaded(const QVariant &res)
     PanshiProtection::applyCard(m_cardProtect, PanshiProtection::protectCard(!w.enable));
     PanshiProtection::applyCard(m_cardWritable, PanshiProtection::writableCard(w.enable));
     PanshiProtection::applyCard(m_cardReboot, PanshiProtection::rebootCard(w));
-}
-
-void ProtectionPage::setProtect(bool protect, bool clearAfterReboot)
-{
-    if (m_running)
-        return;
-    const QString action = protect ? tr("开启只读保护") : tr("关闭只读保护(开启可写层)");
-    QString extra;
-    if (!protect && clearAfterReboot)
-        extra = tr("\n\n本次为临时关闭, 重启后系统将自动恢复只读保护。");
-    if (!Ui::confirmDialog(this, action,
-                       tr("确定要%1吗？\n此操作需要重启后生效。%2").arg(action, extra),
-                       action, !protect))
-        return;
-
-    m_running = true;
-    m_busy->setText(tr("正在设置保护状态..."));
-    m_busy->start();
-    setMaskLoadingEnabled(false);
-    runAsync([protect, clearAfterReboot]() -> QVariant {
-        const CommandResult r = protect ? disableWritable()
-                                        : enableWritable(clearAfterReboot, true);
-        return QVariantMap{{QStringLiteral("ok"), r.ok}, {QStringLiteral("msg"), r.errorMessage}};
-    }, [this](const QVariant &res) {
-        m_busy->stop();
-        m_running = false;
-        const QVariantMap m = res.toMap();
-        if (m.value(QStringLiteral("ok")).toBool()) {
-            // 走基类统一反馈（Success + 可关闭 + 5s 自动消失）
-            showFeedback(Semantic::Success, tr("设置成功，请重启系统使设置生效。"), true);
-        } else {
-            // 原始输出（ostree/deepin-immutable-ctl 的 stderr）收进「详情」，
-            // 正文只留一句可行动说明（方案 §4.4 / O11）
-            showFeedbackWithDetails(Semantic::Danger,
-                                    tr("设置失败，请查看详情了解具体原因。"),
-                                    tr("完整输出"),
-                                    m.value(QStringLiteral("msg")).toString());
-        }
-        refresh();
-    });
 }

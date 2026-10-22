@@ -11,9 +11,12 @@
  *  - 图标全部走 DIconTheme::findQIcon()，缺失时回落到 QStyle 标准图标；
  *  - 字体全部经 DFontSizeManager::bind()；
  *  - 本文件默认不使用 Q_OBJECT（不需要 moc），避免给组件层引入 moc 依赖。
- *    唯一例外是 PanshiRow：它的搜索高亮需要一个可动画的 qreal 属性，
- *    QPropertyAnimation 必须走 Q_PROPERTY，因此该类带 Q_OBJECT。
- *    新增带 Q_OBJECT 的类前请先确认确有此需要，并确认 AUTOMOC 已覆盖本文件。
+ *    例外只有两处（新增前请先确认确有此需要，并确认 AUTOMOC 已覆盖本文件）：
+ *      · PanshiRow：搜索高亮需要一个可动画的 qreal 属性，
+ *        QPropertyAnimation 必须走 Q_PROPERTY；
+ *      · PanshiInlineBanner：关闭按钮要对外发 `dismissed()`，
+ *        让调用方能区分「用户主动关掉」与「数据变化后自动消失」
+ *        （2026-10-10：告警关闭后要落进告警历史，就必须有这个信号）。
  */
 
 #include "tokens.h"
@@ -50,6 +53,55 @@ DWIDGET_USE_NAMESPACE
 DGUI_USE_NAMESPACE
 
 namespace PanshiUi {
+
+/**
+ * 【已弃用 · 2026-10-06 起为空操作】历史上用于关闭 DTK 对话框的窗口模糊效果。
+ *
+ * ⚠️ 不要再调用它做「关模糊」——实测关掉模糊后 DDialog 的半透明背景会把
+ * 底层页面文字透出来（用户报「透明弹窗」），且 exec() 前强行 winId() + 挂
+ * DPlatformHandle 会与冻结机制叠加导致弹窗完全无响应。现保留 DTK 原生渲染
+ * （毛玻璃即平台标准外观），本函数仅为兼容旧调用点而保留，内部直接返回。
+ */
+void disableDialogTransparency(QWidget *dialog);
+
+/**
+ * 让确认类对话框**不阻断主窗口拖拽**（2026-10-06 新增）。
+ *
+ * 背景 —— 「窗口拖不动」的真正根因：
+ *   无条件状态下主窗口拖拽是好的（标题栏 13 点位实测 12 可拖，仅窗口圆角除外）。
+ *   用户之所以看到「弹了提示之后窗口就拖不动」，是因为 `QDialog::exec()`
+ *   建立**模态 grab**，主窗口（含其 DTitlebar 子控件）收不到标题栏鼠标事件，
+ *   拖动状态机无从启动。
+ *
+ * ⚠️ 走过的弯路（勿重复）：曾先把 ApplicationModal 降为 **WindowModal**，
+ *   探针 panshi-dragmodalprobe 实测无效 —— DTitlebar 是主窗口的子控件，
+ *   WindowModal 的 grab 范围恰好覆盖父窗口，标题栏照样收不到事件。
+ *   ⇒ 任何形式的"模态"都不解决问题，必须让主窗口**根本不是模态目标**。
+ *
+ * 采用方案：对话框设为 `Qt::NonModal`，改为「手动冻结」主窗口交互：
+ *   · `setEnabled(false)` 冻结 centralWidget（页面内所有按钮/开关不可点）
+ *   · **不 disable 主窗口本身** ⇒ 标题栏保持可用，窗口随时可拖
+ *   · 对话框 Show 时冻结、Hide / destroyed 时自动恢复
+ * 确认框的语义保住了（用户不能越过对话框去操作页面），且窗口不再"卡住"。
+ *
+ * ⚠️ 冻结必须挂在 **Show** 事件上，而不是本函数调用时立即生效：
+ *   各页面在启动时即被整体构造（QStackedWidget 全量 new），部分对话框
+ *   是**构造期创建、用时才 show** 的成员（如磁盘空间页的设置窗口）。
+ *   若在构造时冻结，对话框「只构造不显示」则冻结永不解除 ——
+ *   整个内容区永久点不动（2026-10-06 点击失效回归的根因）。
+ *
+ * ⚠️ **重挂父对象**（2026-10-06 新增）：对话框原本挂在页面（在 centralWidget
+ *   子树内），冻结 = `centralWidget->setEnabled(false)` 会沿对象树传播，
+ *   把对话框自身也禁用 —— 表现为弹窗完全不响应悬停/点击/按键（用户报
+ *   「奇怪的透明弹窗，无法关闭，软件其它位置也无法操作」）。本函数会把
+ *   对话框改挂到**顶层窗口**（不在 centralWidget 子树内），冻结不再波及它。
+ *
+ * ⚠️ 无 parent、或父窗口不是 QMainWindow（取不到 centralWidget）时**不做任何
+ * 改动** —— 认不出来就不动，避免"看起来改了其实没改"的静默失效。
+ *
+ * 重复调用幂等。在对话框 show/exec 之前调用即可（构造期调用也安全）。
+ */
+void makeDialogNonBlockingWindowModal(QWidget *dialog);
 
 /**
  * 语义：唯一允许表达"颜色意图"的方式。
@@ -279,11 +331,21 @@ private:
  */
 class PanshiInlineBanner : public QWidget
 {
+    Q_OBJECT
 public:
     explicit PanshiInlineBanner(QWidget *parent = nullptr);
 
     void setSemantic(Semantic s);
     void setText(const QString &text);
+    /**
+     * 是否显示右上角关闭按钮。
+     *
+     * ⚠️ 关闭 = 用户主动 dismiss，会先发 `dismissed()` 再隐藏；
+     *    而 `setText(QString())` 是「内容没了自动收起」，不发信号。
+     *    调用方需要「关闭后记进历史/不再重复弹」时，
+     *    **必须连 `dismissed()` 而不是靠 hide 事件** —— 否则
+     *    自动消失也会被误记成用户关掉的（告警历史会平白多出条目）。
+     */
     void setClosable(bool closable);
 
     /** 追加一个操作按钮（如「立即重启」「重试」）；返回按钮以便调用方 connect */
@@ -308,6 +370,10 @@ public:
      * setText() 展示新内容时同样会取消待定隐藏。
      */
     void autoDismiss(int ms);
+
+signals:
+    /** 用户点了右上角关闭按钮（自动消失不触发） */
+    void dismissed();
 
 protected:
     void paintEvent(QPaintEvent *e) override;
@@ -335,7 +401,14 @@ class PanshiStateCard : public PanshiPanel
 public:
     explicit PanshiStateCard(const QString &title, QWidget *parent = nullptr);
 
-    void setValue(const QString &value, Semantic s = Semantic::Normal);
+    /**
+     * @param level 值的字号层级，默认 T2 大数值。
+     *   纯日期/元数据类内容应传 TextLevel::ValueSmall(T4)：
+     *   大字号数值区只留给容量/数量结论（2026-10-09 修正）——
+     *   日期跟 T2 放大后在 168px 最小卡宽下必然截断。
+     */
+    void setValue(const QString &value, Semantic s = Semantic::Normal,
+                  TextLevel level = TextLevel::Value);
     /** status 为空时隐藏徽章 */
     void setStatus(const QString &status, Semantic s = Semantic::Muted);
 

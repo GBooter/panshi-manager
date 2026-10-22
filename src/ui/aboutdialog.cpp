@@ -49,8 +49,9 @@ namespace {
 /**
  * 应用图标。
  *
- * 优先走 DIconTheme（安装后 `panshi.svg` 落在系统图标目录，
- * 由图标主题接管，明暗两套都能自动适配）。
+ * 优先用内嵌资源 :/icons/panshi.svg（新 Logo，2026-10-09 起）——
+ * 系统图标目录可能残留旧版 panshi.svg（只读 /usr 无法覆盖），DIconTheme
+ * 会先解析到它；内嵌资源保证任何安装形态下显示一致（同 C9 先例）。
  * ⚠️ 图标 pixmap 是**构造那一刻的快照**，主题切换必须重查 —— 见 showEvent
  *    里挂的 applicationPaletteChanged。
  * DIconTheme 找不到时回落到项目自带的 data/icons/panshi.svg：
@@ -58,7 +59,13 @@ namespace {
  */
 QIcon productIcon()
 {
-    QIcon ic = DIconTheme::findQIcon(QStringLiteral("panshi"));
+    // 新 Logo（2026-10-09）：内嵌资源优先 —— 系统图标目录可能残留旧版
+    // panshi.svg（只读 /usr 无法覆盖），DIconTheme 会先解析到它；
+    // 内嵌 :/icons/panshi.svg 才能保证任何安装形态下都是新 Logo（同 C9 先例）。
+    QIcon ic = QIcon(QStringLiteral(":/icons/panshi.svg"));
+    if (!ic.isNull())
+        return ic;
+    ic = DIconTheme::findQIcon(QStringLiteral("panshi"));
     if (!ic.isNull())
         return ic;
     static const QString kFallback = QStringLiteral(PANSHI_ICON_SVG);
@@ -70,7 +77,9 @@ QIcon productIcon()
 QString appVersion()
 {
     const QString v = QApplication::applicationVersion();
-    return v.isEmpty() ? QStringLiteral("1.0.0") : v;
+    // 兜底也用编译期注入的版本，别再写字面量：这里曾写死 "1.0.0"，
+    // 一旦调用方忘了 setApplicationVersion()，界面就会静默回落到旧版本号。
+    return v.isEmpty() ? QStringLiteral(PANSHI_VERSION) : v;
 }
 
 /**
@@ -288,22 +297,31 @@ void PanshiAboutDialog::showEvent(QShowEvent *event)
 {
     DAboutDialog::showEvent(event);   // 先让基类摆好它自己的内容
 
-    // 只隐藏 DAboutDialog 自带的**内容区**，**保留 DTitlebar**。
+    disableDialogTransparency(this);   // 关闭 DTK 弹窗默认的模糊/透明效果
+
+    // 只隐藏 DAboutDialog 自带的**内容区**，一类控件必须留：
     //
-    // ⚠️ 这里踩过一次坑：原先是「隐藏全部直接子控件」，结果 DAboutDialog 有
-    // **两个**直接子控件 —— 内容区 + `Dtk::Widget::DTitlebar`（内含
-    // `DTitlebarDWindowCloseButton` 关闭按钮、标题文字、菜单）。一并藏掉的后果：
-    //   ① 右上角关闭按钮消失（用户反馈「标准菜单按钮都没了」）；
-    //   ② DDialog 自身背景是**半透明**的（圆角+阴影设计），内容区一藏，
-    //      壁纸就透过对话框（用户反馈「透明度太高」）。
-    // → 按类名跳过 DTitlebar，其余（内容区）才隐藏。
+    // ⚠️ 这里踩过坑：最初「隐藏全部直接子控件」，结果 DAboutDialog 有 **两个**直接
+    //   子控件 —— 内容区 + `Dtk::Widget::DTitlebar`（内含关闭按钮）。一并藏掉的后果：
+    //   右上角关闭按钮消失（用户反馈「标准菜单按钮都没了」）。
+    //   → 只留 DTitlebar，其余（含内容区与 DBlurEffectWidget）一律隐藏。
+    //
+    // ⚠️ `Dtk::Widget::DBlurEffectWidget`（整窗底色层，几何 == 整窗）**必须跟着藏**：
+    //   它是 DTK 的 WM 合成毛玻璃层，alpha 写死半透明（102/204），即便 `setMaskAlpha
+    //   (255)` 也在真实会话下被覆盖、离屏又根本不渲染（grab() 抓不到）。
+    //   2026-10-05 前次修复以为「保留它并拉满 alpha」能解决，实测抓图仍全透 ——
+    //   因为它压根不在 Qt 控件绘制管线里。藏掉它之后，整窗不透明底改由本类的
+    //   `paintEvent` 自绘（那才是 Qt 控件绘制，grab()/真机都生效）。
     const QList<QWidget *> inherited =
         findChildren<QWidget *>(QString(), Qt::FindDirectChildrenOnly);
     for (QWidget *w : inherited) {
-        if (w->metaObject()->className() == QLatin1String("Dtk::Widget::DTitlebar"))
-            continue;   // 保留标题栏：它提供关闭按钮与窗口标题
+        const QString cls = QString::fromLatin1(w->metaObject()->className());
+        if (cls == QLatin1String("Dtk::Widget::DTitlebar")) // 关闭按钮与窗口标题，必须留
+            continue;
         w->setVisible(false);
     }
+
+    // 整窗不透明底由 paintEvent 自绘，无需再对合成层做处理。
 
     if (!m_body) {
         m_body = buildBody();
@@ -314,6 +332,8 @@ void PanshiAboutDialog::showEvent(QShowEvent *event)
                 this, [this] {
             if (m_icon)
                 m_icon->setPixmap(productIcon().pixmap(64, 64));
+            // 不透明底在 paintEvent 里按当前 applicationPalette() 实时取色，
+            // 主题切换会自动触发 repaint，无需手动重压。
             retheme();
         });
         setMinimumWidth(kAboutMinWidth);
@@ -465,6 +485,34 @@ void PanshiAboutDialog::retheme()
 {
     if (m_linkRow)
         m_linkRow->retheme();
+}
+
+/**
+ * 整窗不透明圆角底。
+ *
+ * ⚠️ 为什么必须在这里画（2026-10-05 前次修复的教训）：
+ *   DDialog 是 `WA_TranslucentBackground`，**自身不画任何背景**；它唯一的底色来源
+ *   是库内 `DBlurEffectWidget` —— 一层 **WM 合成**的毛玻璃（alpha 写死 102/204）。
+ *   这一层**不在 Qt 控件绘制管线里**：离屏 `grab()` 抓不到它，真机又被平台主题
+ *   覆盖成半透明。所以「保留它并 setMaskAlpha(255)」在抓图里始终全透。
+ *
+ *   正解：在对话框自己的 `paintEvent` 画不透明圆角底。这层是 Qt 控件绘制，
+ *   `grab()` 抓得到、真机也生效，整窗恒不透明。圆角外（drawRoundedRect 之外）
+ *   保持透明 → 真机上透出桌面，正好是圆角观感。
+ *   底色取 `baseColor()`（与内容区同源），主题切换会触发 repaint 自动跟随。
+ *
+ *   DBlurEffectWidget 已在 showEvent 隐藏循环里被藏掉 —— 否则它会以半透明像素
+ *   盖在这层底之上，真机仍会透出壁纸。
+ */
+void PanshiAboutDialog::paintEvent(QPaintEvent *event)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setPen(Qt::NoPen);
+    p.setBrush(baseColor());   // 与内容区一致，整窗一个底色
+    p.drawRoundedRect(rect(), Radius::Frame, Radius::Frame);
+
+    DAboutDialog::paintEvent(event);   // 保留基类绘制（DTitlebar 是独立子控件，不在此画）
 }
 
 } // namespace PanshiUi

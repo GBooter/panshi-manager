@@ -1,0 +1,28 @@
+Panshi Manager is a graphical management tool purpose-built for the Deepin 25 "Panshi" immutable system. Developed natively in C++17 / Qt6 / DTK6, it blends seamlessly into the Deepin desktop environment. It turns tasks that once required the command line — system protection, snapshots and backups, atomic upgrades — into an intuitive graphical interface, making daily management of an immutable system simple, safe, and predictable.
+
+【Key Features】
+
+■ Overview at a Glance
+Protection status, writable layer, snapshot count, per-repository disk usage, system name and kernel version — all on a single screen, with shortcuts to common actions.
+
+■ Disk Space, Continuously Monitored
+A background service records daily system-disk usage, and a timeline shows capacity trends from the last 7 days up to a year. Abnormal growth triggers automatic alerts, and you can drill down to the exact folder or file. Capacity forecasting estimates when the disk will fill up at the current growth rate. Excluded directories, storage budgets, and alert history are all supported.
+
+■ System Protection, Always Under Control
+Read-only protection and writable-layer status at a glance; enable or disable Panshi system protection with one click. Core directories are mounted read-only, guarding against accidental damage or malware.
+
+■ Backups & Versions, Unified Management
+Create, delete, and restore system snapshots in one place. A safety backup is created automatically before every restore, and failed upgrades roll back automatically. Deployment instances are managed here too — old systems are kept or cleaned up according to policy.
+
+■ System Updates & Policies
+Check for updates, perform atomic upgrades, and clean caches in one flow. Before upgrading, you can see exactly which packages will be updated, grouped by purpose. Policies such as backup retention limits, automatic cleanup on overflow, pre-rollback backup cleanup, and old deployment retention take effect immediately, keeping disk usage in check.
+
+【Design & Experience】
+· Follows the system light/dark theme automatically
+· Bilingual UI: Simplified Chinese and English
+· Full-page scrolling layout — no content clipping at any window size
+· Card-based information architecture with in-page feedback; successes never interrupt
+· Root operations are elevated automatically — no commands to memorize
+
+【Who Is It For】
+Everyone running Deepin 25 Panshi — especially individual users and administrators who want to manage system protection, backups, and disk space graphically, without memorizing command lines.

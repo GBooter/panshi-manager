@@ -7,18 +7,21 @@
  *
  * 用 QListView + QStandardItemModel + 自绘 delegate 实现：
  *  - 分组标题行（概览 / 系统维护 / 设置）：TextTips 小字，不可选中；
- *  - 导航项：主题图标 + 文字，选中态 = Highlight 柔和底 + Highlight 文字
+ *  - 导航项：主题图标 + 文字，选选态 = Highlight 柔和底 + Highlight 文字
  *    （跟随用户主题色），hover = ItemBackground；
  *  - 键盘可达：↑/↓ 移动（自动跳过分组行）、Enter 激活、Tab 可进入焦点，
  *    焦点框由 QStyle::PE_FrameFocusRect 绘制（修复原 NoFocus + outline:none）。
+ *
+ * ⚠️ 2026-10-06：按用户要求**移除了设置搜索框**（原 DLineEdit + 结果列表）。
+ * 侧栏退化为纯导航。页面侧的 searchableSettings() / highlightSetting() 能力
+ * **保留未动**（其它入口与后续恢复搜索都要用），只是本控件不再提供搜索 UI，
+ * 也不再消费 SettingIndex。相关成员与接口见下方「已移除」注释。
  *
  * 不使用 Q_OBJECT：激活回调经 std::function 暴露，避免 AUTOMOC 依赖。
  */
 
 #include "components.h"
-#include "settingindex.h"
 
-#include <DLineEdit>
 #include <QListView>
 #include <QStandardItemModel>
 #include <functional>
@@ -47,51 +50,23 @@ public:
     /** 按 pageData 选中导航项（只更新选中态，不触发 activated）；无匹配返回 false */
     bool setCurrentData(int pageData);
 
-    /**
-     * 绑定设置搜索索引（阶段 4）。
-     *
-     * 传入 nullptr 或从不调用时，搜索框隐藏——侧栏退化为纯导航，
-     * 便于在未提供索引的场景（测试、裁剪构建）保持可用。
-     */
-    void setSettingIndex(const SettingIndex *index);
-
-    /**
-     * 搜索命中并落地时回调，参数为该条目的 pageId 与 targetKey。
-     * 由 MainWindow 实现"切页 + 定位 + 高亮"。
-     */
-    std::function<void(int pageId, const QString &targetKey)> settingActivated;
+    // ---- 已移除（2026-10-06，用户要求移除侧栏搜索）----
+    //
+    //   void setSettingIndex(const SettingIndex *index);
+    //   std::function<void(int pageId, const QString &targetKey)> settingActivated;
+    //   QLineEdit/DLineEdit *m_search;   QListView *m_results;
+    //   QStandardItemModel *m_resultModel;   QWidget *m_resultsHost;
+    //   const SettingIndex *m_index;
+    //   eventFilter() 覆写（搜索态 ↑↓/Esc 键盘导航专用）
+    //
+    // 恢复搜索时按此清单回填即可；SettingIndex 与页面侧接口均未删除。
 
     /** 导航项被点击/回车激活时回调，参数为 addItem 传入的 pageData */
     std::function<void(int)> activated;
 
-protected:
-    /**
-     * 搜索态键盘导航：↑↓ 移动结果高亮、Esc 清空关键词。
-     *
-     * 装在**输入框**与结果列表两处（原因见 .cpp 构造函数注释）：
-     * 搜索态下焦点始终在 lineEdit，↑↓ 会被 QLineEdit 消费为输入历史导航，
-     * 而结果列表永远拿不到焦点（点它会立即落地切页）。
-     * 装在持有焦点的控件上，是这类「列表+输入框」组合的唯一可靠做法。
-     */
-    bool eventFilter(QObject *watched, QEvent *e) override;
-
 private:
-    void onSearchTextChanged(const QString &text);
-    void refreshResults();
-    void activateResult(int row);
-    /** 结果为空且有关键词时，显示"无匹配"提示行 */
-    void showNoResultHint();
-
-    DLineEdit *m_search = nullptr;
-    QListView *m_results = nullptr;
-    QStandardItemModel *m_resultModel = nullptr;
-    /** 结果列表行的 UserRole 存 targetKey，UserRole+1 存 pageId */
-    QWidget *m_resultsHost = nullptr;
-
     QListView *m_view;
     QStandardItemModel *m_model;
-
-    const SettingIndex *m_index = nullptr;
 };
 
 } // namespace PanshiUi

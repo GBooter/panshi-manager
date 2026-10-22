@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
-project(panshi-manager VERSION 1.0.0 LANGUAGES CXX)
+project(panshi-manager VERSION 1.0.6 LANGUAGES CXX)
+
+# 版本号单一来源：上方 project() 的 VERSION。
+# 编译期以字符串宏下发，供 QCoreApplication::setApplicationVersion() 使用，
+# 界面「关于」页再读 applicationVersion() 渲染 —— C++ 里**不得**再出现字面量版本号
+# （1.0.5 之前的教训：CMake、main.cpp、aboutpage.cpp 各写一份 1.0.0，
+#  打到 1.0.5 时关于页仍显示 1.0.0）。
+# debian/changelog 是打包侧的版本来源，tools/build-deb.sh 会校验两者一致。
+add_compile_definitions(PANSHI_VERSION="${PROJECT_VERSION}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,7 +76,71 @@ set(PANSHI_SOURCES
     src/disk/monitormain.cpp
 )
 
-add_executable(panshi-manager ${PANSHI_SOURCES} data/icons/icons.qrc)
+# 头文件同样进 target 源列表：qt_add_translations 的 lupdate 只扫 target 的
+# SOURCES，而 common.h / masterswitch.h / protectioncards.h 等头文件里有
+# inline 函数的 tr()（QObject::tr 与 Q_DECLARE_TR_FUNCTIONS 的 Tr::tr）。
+# 2026-10-21 实测：只传 cpp 时这些串**永不出现在 .ts 里**，英文界面静默
+# 回落中文（无编译告警）。头文件进 add_executable 无副作用（不参与编译）。
+# ⚠ src/tools/ 下的探针有各自的可执行目标与 tr context，不得并入本列表。
+set(PANSHI_HEADERS
+    src/backend.h
+    src/disk/disktypes.h
+    src/disk/history.h
+    src/disk/monitorconfig.h
+    src/disk/monitor.h
+    src/disk/monitormain.h
+    src/disk/scanner.h
+    src/mainwindow.h
+    src/pages/aboutpage.h
+    src/pages/basepage.h
+    src/pages/common.h
+    src/pages/deployspage.h
+    src/pages/diskusagepage.h
+    src/pages/masterswitch.h
+    src/pages/overviewpage.h
+    src/pages/policypage.h
+    src/pages/protectioncards.h
+    src/pages/protectionpage.h
+    src/pages/snapshotspage.h
+    src/pages/updatepage.h
+    src/pages/versionpage.h
+    src/style.h
+    src/ui/aboutdialog.h
+    src/ui/components.h
+    src/ui/confirmdialog.h
+    src/ui/settingindex.h
+    src/ui/sidebar.h
+    src/ui/tokens.h
+    src/widgets/checkoverlay.h
+    src/widgets/countdowndialog.h
+    src/widgets/radarwidget.h
+    src/widgets/scanoverlay.h
+    src/widgets/usagechart.h
+)
+
+add_executable(panshi-manager ${PANSHI_SOURCES} ${PANSHI_HEADERS} data/icons/icons.qrc)
+
+# ---- 模态对话框阻塞拖拽探针 panshi-dragmodalprobe（开发期专用，不安装）----
+# 「窗口拖不动」此前三轮都查错了方向（CSD / dxcb 钩子 / 高DPI 警告），
+# 真正触发条件是**模态对话框 exec() 的应用级 grab**。本探针把该判据固化：
+# 5 个场景各打一行「MODAL / 主窗口可拖 / 期望阻塞 / PASS-FAIL」。
+# ⚠️ 判据有效性：场景 2（ApplicationModal）必须 FAIL、场景 4（WindowModal）必须 PASS，
+#   两者同时成立才说明探针真的能测到该缺陷；都 PASS 即假阴性，不可采信。
+# 与页面共用 components.cpp 的 makeDialogNonBlockingWindowModal()（不复制实现）。
+add_executable(panshi-dragmodalprobe
+    src/tools/dragmodalprobe.cpp
+    src/ui/components.cpp
+)
+target_include_directories(panshi-dragmodalprobe PRIVATE src)
+target_link_libraries(panshi-dragmodalprobe PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Svg
+    Dtk6::Core
+    Dtk6::Gui
+    Dtk6::Widget
+)
 
 # ---- 配色探针 panshi-colorprobe（开发期专用，不安装）--------------------
 # C7「使用率分档颜色」此前只能肉眼观察，且暗色复核受限于「本机系统级暗色不可达」。
@@ -215,6 +287,7 @@ add_executable(panshi-aboutshot
     src/tools/aboutshot.cpp
     src/ui/aboutdialog.cpp
     src/ui/components.cpp
+    data/icons/icons.qrc
 )
 target_include_directories(panshi-aboutshot PRIVATE src)
 target_compile_definitions(panshi-aboutshot PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
@@ -321,6 +394,46 @@ target_link_libraries(panshi-backendprobe PRIVATE
     Qt6::Concurrent
 )
 
+# ---- 部署删除规则探针 panshi-deployprobe（开发期专用，不安装）----------
+# 固化「隐藏主线不可删 + 删除传 commitId」两条规则，防回退：
+#   R1 隐藏主线不可删：ctl 的 Hidden=true（当前运行 + 待生效替换主线）必须经
+#       isDeployDeletable() 判为不可删；普通历史 / 回滚备份（Hidden=false）才可删；
+#       当前启动项必然 hidden，回滚备份绝不能被 hidden 误伤。
+#   R2 删除传 commitId：undeployArgs(commitId) 的末参必须是 commitId（长哈希），而非行下标。
+# 直接调用 backend 真实函数（getDeploys / undeployArgs / isDeployDeletable），
+# 不另抄解析逻辑；ctl 不可用时 SKIP。
+add_executable(panshi-deployprobe
+    tools/probe_deploy.cpp
+    src/backend.cpp
+)
+target_include_directories(panshi-deployprobe PRIVATE src)
+target_link_libraries(panshi-deployprobe PRIVATE
+    Qt6::Core
+    Qt6::Concurrent
+)
+
+# ---- 部署删除「视觉/层级」快照探针 panshi-deployshot（开发期专用，不安装）----
+# 守「UI 把删除契约画对了」：按钮真的置灰、状态列真的显「待生效」而非「历史」、
+# 「待生效 / 回滚前 / 当前」徽章真的绘制出来。与 panshi-deployprobe（守逻辑契约）
+# 互补。复刻 deployspage.cpp onLoaded 单行渲染，但不 link 主窗口（只 link
+# backend.cpp + components.cpp）。offscreen 下截图仅复核排版/层级（DTK 无主题样式）。
+add_executable(panshi-deployshot
+    src/tools/deployprobe_snapshot.cpp
+    src/backend.cpp
+    src/ui/components.cpp
+)
+target_include_directories(panshi-deployshot PRIVATE src)
+target_link_libraries(panshi-deployshot PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Svg
+    Qt6::Concurrent
+    Dtk6::Core
+    Dtk6::Gui
+    Dtk6::Widget
+)
+
 # ---- 图标探针 panshi-iconprobe（开发期专用，不安装）--------------------
 # 「没有图标」要分清断在哪一环：① desktop 的 Icon 名 ② XDG 主题能否解析
 # ③ DTK 的 DIconTheme::findQIcon 能否解析（应用实际用这个）。
@@ -354,6 +467,13 @@ install(TARGETS panshi-manager RUNTIME DESTINATION bin)
 install(FILES ${PANSHI_QM_FILES}
         DESTINATION share/panshi-manager/translations)
 install(FILES data/icons/panshi.svg DESTINATION share/icons/hicolor/scalable/apps)
+# 新 Logo（2026-10-09）：除 scalable 的 panshi.svg（内嵌圆角位图兜底）外，
+# 同步安装 hicolor 标准 PNG 尺寸 —— 主题查找对标准尺寸优先用位图，小尺寸
+# （16/22/24）显示质量明显好于 SVG 缩放，且缓存/渲染开销更低。
+foreach(_panshi_size 16 22 24 32 48 64 128 256 512)
+    install(FILES data/icons/panshi-${_panshi_size}.png
+            DESTINATION share/icons/hicolor/${_panshi_size}x${_panshi_size}/apps)
+endforeach()
 # desktop 入口：Exec 按实际安装前缀生成（磐石只读系统装 /usr/local，
 # 打包镜像时装 /usr，写死任一绝对路径都会让另一形态的开始菜单失效）。
 # GNUInstallDirs 给出 CMAKE_INSTALL_FULL_BINDIR（绝对路径）。
@@ -395,3 +515,80 @@ configure_file(data/systemd/panshi-monitor.service
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/panshi-monitor.service
               data/systemd/panshi-monitor.timer
         DESTINATION lib/systemd/user)
+
+# ---- wordWrap 标签裁切检测探针（开发期专用，panshi-clippprobe）----
+# 判据：QLabel::height() < heightForWidth(width())。
+# ⚠️ 判据不可改回「兄弟控件几何相交」—— 那是假阴性（wordWrap 场景下
+#    控件矩形并不相交，文字是画出边界的），双向都 PASS 会让人误判"没修好"。
+# 注意：PANSHI_SOURCES 含 src/main.cpp（自带 main），此处必须排除，
+# 否则与探针的 main 冲突（multiple definition of `main`）。
+set(PANSHI_SOURCES_NO_MAIN "")
+foreach(_src ${PANSHI_SOURCES})
+    if(NOT _src MATCHES "src/main\\.cpp$")
+        list(APPEND PANSHI_SOURCES_NO_MAIN ${_src})
+    endif()
+endforeach()
+add_executable(panshi-clippprobe
+    tools/clippprobe.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-clippprobe PRIVATE src)
+target_compile_definitions(panshi-clippprobe PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-clippprobe PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)
+
+# ---- 磁盘页区间汇总离屏截图探针（开发期专用，panshi-diskshot）----
+# 验证「日期退出大字号数值区」重设计（2026-10-09）：断言 + PNG 输出。
+# 数据用探针内 XDG_DATA_HOME 隔离，不碰真实 disk-history。
+add_executable(panshi-diskshot
+    tools/diskshot.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-diskshot PRIVATE src)
+target_compile_definitions(panshi-diskshot PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-diskshot PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)
+
+# ---- 英文界面残留离屏探针（开发期专用，panshi-langprobe）------------------
+# 验证「切成英文后仍有中文残留」修复（2026-10-22）：磁盘页 + 监控设置对话框
+# 的 SpinBox 后缀（ 小时 / 天）在真机上点不到（xdotool 坐标点击不生效），
+# 故走控件树黑盒断言；判据含「后缀不得含 CJK」，回退成硬编码中文必 FAIL。
+add_executable(panshi-langprobe
+    tools/langprobe.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-langprobe PRIVATE src)
+target_compile_definitions(panshi-langprobe PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-langprobe PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)
+
+# ---- 磁盘页「分析区整合 + 导航 + 告警关闭」离屏探针（开发期专用）----
+# 验证三视角共用一张表、返回入口贴着操作对象、告警可手动关闭且收进历史（2026-10-10）。
+# 断言：视角切换 / 下钻面包屑 / 返回按钮状态 / 关闭落盘，均走控件树黑盒判定。
+add_executable(panshi-disknavprobe
+    tools/disknavprobe.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-disknavprobe PRIVATE src)
+target_compile_definitions(panshi-disknavprobe PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-disknavprobe PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)
+
+# ---- 更新页「待更新软件包明细 + 用途分组」离屏探针（开发期专用）----
+# 背景（2026-10-18）：deepin-immutable-ctl upgrade check 只输出计数，不告诉用户
+# 要更新哪些包。更新页从 apt 只读视图（apt.real list --upgradable + apt-cache show）
+# 取明细并按用途分组。本探针点真实「检查更新」按钮走完整链路，用探针独立执行的
+# apt 实测数与 UI 包行数互证（不写死 6，系统更新后依然成立），并查重复检查不叠加行。
+add_executable(panshi-updateshot
+    tools/updateshot.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-updateshot PRIVATE src)
+target_compile_definitions(panshi-updateshot PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-updateshot PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)

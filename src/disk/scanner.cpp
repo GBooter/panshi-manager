@@ -3,6 +3,9 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QFile>
+#include <QSet>
+#include <algorithm>
 #include <unistd.h>
 
 namespace Panshi {
@@ -32,8 +35,19 @@ bool DiskScanner::startTopLevelScan()
         return false;
     m_drillMode = false;
     m_drillDir.clear();
-    // 不跨文件系统(-x)会漏掉 /var /home /usr 等独立挂载与 overlay，故显式排除伪文件系统
-    const QStringList duArgs = {QStringLiteral("du"), QStringLiteral("-k"),
+    // 口径修正（阶段 3-9）：顶层扫描加 -x（不跨文件系统）。
+    //
+    // 背景：旧实现不加 -x，du / 会钻入 /media、/persistent、/var、/home 等
+    // **独立分区挂载点**，把整块分区的占用计入顶层目录（本机实测 /media 被计入
+    // 约 255GB、/persistent 约 18GB），而页面分母 record.total 取自 df /
+    // （仅根分区约 8.5GB）→ 「磁盘构成 / 占用排行」的占比出现 >100% 的假值
+    // （用户实测 /media 2913.3%）。
+    //
+    // -x 之后顶层只统计根分区自身（本机 ostree 布局 = /sysroot + /ostree），
+    // 与页面「已用 / 总容量」同一口径，占比才是真占比。
+    // deepin btrfs 子卷布局下 /var /home /usr 子卷与根同 st_dev，-x 不会漏掉它们；
+    // 伪文件系统（/proc /sys /dev /run /tmp）保留显式排除，语义更清晰。
+    const QStringList duArgs = {QStringLiteral("du"), QStringLiteral("-xk"),
                                 QStringLiteral("--max-depth=1"),
                                 QStringLiteral("--exclude=/proc"), QStringLiteral("--exclude=/sys"),
                                 QStringLiteral("--exclude=/dev"), QStringLiteral("--exclude=/run"),
@@ -138,6 +152,102 @@ bool DiskScanner::dfRoot(qint64 *capacity, qint64 *used, QString *err)
     }
     if (err) *err = QObject::tr("无法解析 df 输出");
     return false;
+}
+
+QList<DiskMountInfo> DiskScanner::listOtherPartitions()
+{
+    QList<DiskMountInfo> out;
+    QFile f(QStringLiteral("/proc/self/mounts"));
+    if (!f.open(QIODevice::ReadOnly))
+        return out;
+
+    // 1) 读挂载表：收集根分区之外的真实块设备挂载点（按设备去重，留主挂载点）
+    const QStringList pseudoFs = {
+        QStringLiteral("proc"), QStringLiteral("sysfs"), QStringLiteral("tmpfs"),
+        QStringLiteral("devpts"), QStringLiteral("devtmpfs"), QStringLiteral("cgroup"),
+        QStringLiteral("cgroup2"), QStringLiteral("efivarfs"), QStringLiteral("selinuxfs"),
+        QStringLiteral("debugfs"), QStringLiteral("tracefs"), QStringLiteral("securityfs"),
+        QStringLiteral("pstore"), QStringLiteral("bpf"), QStringLiteral("ramfs"),
+        QStringLiteral("mqueue"), QStringLiteral("hugetlbfs"), QStringLiteral("binfmt_misc"),
+        QStringLiteral("fusectl"), QStringLiteral("configfs"), QStringLiteral("overlay"),
+        QStringLiteral("autofs"), QStringLiteral("rpc_pipefs"), QStringLiteral("nsfs"),
+        QStringLiteral("squashfs"), QStringLiteral("iso9660"),
+    };
+    QString rootDev;
+    QList<DiskMountInfo> mounts;
+    const QList<QByteArray> lines = f.readAll().split('\n');
+    for (const QByteArray &raw : lines) {
+        const QList<QByteArray> cols = raw.split(' ');
+        if (cols.size() < 3)
+            continue;
+        const QString dev = QString::fromUtf8(cols.at(0));
+        const QString mp = QString::fromUtf8(cols.at(1));
+        const QString fs = QString::fromUtf8(cols.at(2));
+        if (dev.isEmpty() || mp.isEmpty())
+            continue;
+        if (mp == QStringLiteral("/")) {          // 记录系统盘设备（用于排除）
+            rootDev = dev;
+            continue;
+        }
+        if (pseudoFs.contains(fs))
+            continue;
+        if (!dev.startsWith(QLatin1String("/dev/")))   // 只留真实块设备
+            continue;
+        if (dev == rootDev)                            // 排除系统盘自身
+            continue;
+        // 按设备去重：同一分区的多个挂载点（如 /persistent /var /home）只留首个
+        bool seen = false;
+        for (const DiskMountInfo &m : mounts) {
+            if (m.device == dev) {
+                seen = true;
+                break;
+            }
+        }
+        if (seen)
+            continue;
+        DiskMountInfo mi;
+        mi.device = dev;
+        mi.mountPoint = mp;
+        mi.fsType = fs;
+        mounts.append(mi);
+    }
+    if (mounts.isEmpty())
+        return out;
+
+    // 2) 一次 df -B1 批量取各挂载点容量/已用（比逐个起进程快）
+    QStringList args = {QStringLiteral("-B1")};
+    for (const DiskMountInfo &m : mounts)
+        args << m.mountPoint;
+    QProcess proc;
+    proc.start(QStringLiteral("df"), args);
+    if (!proc.waitForStarted(5000) || !proc.waitForFinished(15000))
+        return out;
+    // df -B1 多参数输出：Filesystem 1B-blocks Used Available Capacity Mounted on
+    const QList<QByteArray> dflines = proc.readAllStandardOutput().split('\n');
+    for (const QByteArray &raw : dflines) {
+        const QList<QByteArray> cols = raw.trimmed().split(' ');
+        if (cols.size() < 6 || cols.at(0) == QByteArray("Filesystem"))
+            continue;
+        bool ok1 = false, ok2 = false;
+        const qint64 blocks = cols.at(1).toLongLong(&ok1);
+        const qint64 used = cols.at(2).toLongLong(&ok2);
+        if (!ok1 || !ok2)
+            continue;
+        const QString dev = QString::fromUtf8(cols.at(0));
+        for (DiskMountInfo &m : mounts) {
+            if (m.device == dev) {
+                m.capacity = blocks;
+                m.used = used;
+                out.append(m);
+                break;
+            }
+        }
+    }
+
+    // 3) 按已用降序（大分区在前）
+    std::sort(out.begin(), out.end(),
+              [](const DiskMountInfo &a, const DiskMountInfo &b) { return a.used > b.used; });
+    return out;
 }
 
 // ----------------------------------------------------------------------

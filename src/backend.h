@@ -29,6 +29,8 @@ struct DeployInfo {
     qint64  time = 0;
     bool    isBooted = false;
     bool    isRollbackBackup = false;
+    int     index = -1;       // ctl 真实 Index（隐藏主线固定为 0，可能与 booted 冲突，故删除改传 commitId）
+    bool    hidden = false;   // 隐藏主线部署：待生效的替换主线，受系统保护不可删除
 };
 
 struct WritableStatus {
@@ -81,7 +83,9 @@ CommandResult modifySnapshot(const QString &id, const QString &name, const QStri
 CommandResult rollbackSnapshot(const QString &id, bool deleteOthers);
 
 QList<DeployInfo> getDeploys();
-CommandResult undeploy(int index);
+CommandResult undeploy(const QString &commitId);
+QStringList undeployArgs(const QString &commitId);          // 删除命令参数（探针用：断言「传 commitId 而非下标」）
+bool isDeployDeletable(const DeployInfo &d);                // 删除按钮可用性判据（当前运行/待生效主线/无标识一律不可删，单一真相）
 
 WritableStatus getWritableStatus();
 CommandResult enableWritable(bool clearAfterReboot, bool allDirs);
@@ -97,6 +101,21 @@ CommandResult checkUpgrade();
 CommandResult runUpgrade();
 CommandResult cleanUpgradeCache(bool allCache);
 
+/**
+ * 待更新软件包明细（apt 视图）。
+ *
+ * deepin-immutable-ctl upgrade check 只输出计数（Total count / Need download
+ * count），不告诉用户"要更新哪些包"。本函数从 apt 侧取明细（只读查询，
+ * 不提权、不写任何文件），供更新页分组展示。
+ */
+struct UpgradablePackage {
+    QString name;        // deb 包名
+    QString newVersion;  // 仓库候选版本
+    QString oldVersion;  // 当前安装版本（deb-ostree 同版本重建时两者相同）
+    QString section;     // apt Section（分类依据；查询失败时为空）
+};
+QList<UpgradablePackage> queryUpgradablePackages();
+
 RollbackState getRollbackState();
 CommandResult saveRollbackState(const QJsonObject &state);
 void clearRollbackState();
@@ -109,6 +128,11 @@ QString getBootedDeployId();
 QString formatSize(qint64 bytes);
 QString formatTime(qint64 ts);
 QString jsonField(const QJsonObject &obj, const QStringList &names, const QString &def = QString());
+/**
+ * 把 pkexec / 命令执行的英文错误信息转成中文友好提示。
+ * 识别不出的原始信息原样返回（不丢信息）。所有页面展示后端错误时都应走这里。
+ */
+QString friendlyExecError(const QString &raw);
 
 } // namespace Panshi
 

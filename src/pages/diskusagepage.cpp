@@ -22,6 +22,7 @@
 #include <DTabBar>
 #include <DIconTheme>
 #include <DIconButton>
+#include <DButtonBox>
 #include <QStackedWidget>
 #include <QCalendarWidget>
 #include <QDir>
@@ -42,6 +43,7 @@
 #include <QStyle>
 #include <QFrame>
 #include <QSizePolicy>
+#include <QStringListModel>
 DWIDGET_USE_NAMESPACE
 DGUI_USE_NAMESPACE
 
@@ -49,6 +51,34 @@ using namespace Panshi;
 
 namespace {
 constexpr qint64 kMB = 1024LL * 1024;
+
+/**
+ * 紧凑容量文本：GB/MB 取整、无小数（用于分区行「已用 / 容量」短标签）。
+ * 分区容量可能到数百 GB，formatSize 的三位小数会把行标签撑爆。
+ */
+QString formatSizeCompact(qint64 bytes)
+{
+    constexpr qint64 kG = 1024LL * 1024 * 1024;
+    constexpr qint64 kM = 1024LL * 1024;
+    if (bytes >= kG)
+        return QString::number(bytes / kG) + QStringLiteral(" GB");
+    if (bytes >= kM)
+        return QString::number(bytes / kM) + QStringLiteral(" MB");
+    if (bytes >= 1024)
+        return QString::number(bytes / 1024) + QStringLiteral(" KB");
+    return QString::number(bytes) + QStringLiteral(" B");
+}
+
+/** 在已加载记录里查某一天的序号；找不到返回 -1 */
+int dateIndexInRecords(const QList<DiskDayRecord> &recs, const QDate &d)
+{
+    if (!d.isValid())
+        return -1;
+    for (int i = 0; i < recs.size(); ++i)
+        if (recs.at(i).date == d)
+            return i;
+    return -1;
+}
 
 /**
  * 作用域退出时补一次表格无障碍收尾。
@@ -311,6 +341,10 @@ DiskUsagePage::DiskUsagePage(MainWindow *win)
     //    警告然后被丢弃。功能上没坏（真正生效的是 buildSettingsDialog 里那次），
     //    但代价很坏：启动时刷一串噪音警告，且**真正漏连时的警告会淹没在里面**
     //    ——下次谁少建一个控件，看日志根本分不出是哪一条。已移除该次无效调用。
+    //
+    // 告警的"已关闭"状态要先于 UI 建好读入 —— 否则本次启动会先把用户
+    // 上次关掉的告警再弹一次（看起来像"关不掉"）。
+    loadAlertUiState();
     buildUi();
 
     m_watcher = new QFileSystemWatcher(this);
@@ -365,12 +399,36 @@ DiskUsagePage::~DiskUsagePage()
     m_scanner.cancel();
 }
 
+void DiskUsagePage::showEvent(QShowEvent *e)
+{
+    BasePage::showEvent(e);
+    // 隐藏页在 QStackedWidget 里首次 show 时才拿到真实视口宽度（此时布局已就绪），
+    // 与基类对 registerResponsiveCardRow 的处理同理。
+    updateHeroLayout();
+}
+
+bool DiskUsagePage::eventFilter(QObject *watched, QEvent *e)
+{
+    // 必须在基类处理之前/之后都无害 —— 两者监听的宽度来源不同：
+    // 基类管卡片行折行（表320/Row200），本页管英雄区折行（520 阈值）。
+    if (m_contentScroll && watched == m_contentScroll->viewport()
+        && e->type() == QEvent::Resize) {
+        updateHeroLayout();
+    }
+    return BasePage::eventFilter(watched, e);
+}
+
 void DiskUsagePage::buildUi()
 {
     auto *scroll = Ui::makeScrollArea(this);
     m_contentScroll = scroll;
     auto *content = new QWidget;
     scroll->setWidget(content);
+    // 英雄区折行判定取的是 viewport 宽度（已扣侧边栏与滚动条），
+    // 必须跟基类一样监听 viewport 的 Resize —— 只挂基类那一个 eventFilter
+    // 不够，页面自身的 resizeEvent 在 ScrollArea 里不随视口变化而触发。
+    if (scroll->viewport())
+        scroll->viewport()->installEventFilter(this);
     auto *rootLay = new QVBoxLayout(this);
     rootLay->setContentsMargins(0, 0, 0, 0);
     rootLay->setSpacing(0);
@@ -386,8 +444,15 @@ void DiskUsagePage::buildUi()
                                   QStringLiteral("drive-harddisk")));
 
     buildOverviewCard(lay);
+    // ③ 区间汇总在 ④ 时间线**之前**（2026-10-10 用户要求）：阅读顺序改为
+    //   「先给结论 → 再看明细」。读者第一眼拿到「这段时间涨了多少」，
+    //   需要溯源时才往下看折线；反过来（先图后数）会让人先费力读图、
+    //   再到下面找结论，等于把答案埋在过程后面。
+    // 连带影响：范围选择器（15/30/90/…/自定义）是「区间」的定义者，
+    //   必须随区间汇总一起上移，否则变成「控件在它所控制的结论下方」。
+    buildSummaryCard(lay);
     buildTimelineCard(lay);
-    buildAnalysisTabs(lay);
+    buildAnalysisSection(lay);   // ④ 磁盘分析：构成 / 增长 / 排行 三视角整合区
     buildSettingsDialog();
     lay->addStretch();
 }
@@ -444,228 +509,862 @@ void DiskUsagePage::buildOverviewCard(QVBoxLayout *lay)
     heroRow->addStretch();
     cl1->addLayout(heroRow);
 
-    m_monitorStatus = Ui::rowDesc(QString());
-    cl1->addWidget(m_monitorStatus);
-
-    // 监控服务运行状态标识 + 设置入口
+    // 状态行：服务徽章 + 监控参数/最近记录（单行，主次分层）
     // 徽章语义由 PanshiBadge 承担（原按 objectName 切 panshiTagXxx 的 QSS）
-    auto *svcRow = new QHBoxLayout;
-    svcRow->setSpacing(10);
+    auto *statusRow = new QHBoxLayout;
+    statusRow->setSpacing(10);
     m_serviceBadge = new PanshiUi::PanshiBadge(tr("正在检测服务状态…"),
                                                PanshiUi::Semantic::Muted, c1);
-    svcRow->addWidget(m_serviceBadge);
+    statusRow->addWidget(m_serviceBadge);
     m_serviceStartBtn = Ui::button(tr("立即启动"));
     m_serviceStartBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("system-run")));
     m_serviceStartBtn->hide();
     connect(m_serviceStartBtn, &DPushButton::clicked, this, &DiskUsagePage::onStartMonitorService);
-    svcRow->addWidget(m_serviceStartBtn);
-    svcRow->addStretch();
+    statusRow->addWidget(m_serviceStartBtn);
+    m_monitorStatus = Ui::rowDesc(QString());
+    statusRow->addWidget(m_monitorStatus, 1);
+    cl1->addLayout(statusRow);
+
+    // 操作行：立即扫描 + 监控设置（右对齐，把散在两处的操作集中到概览卡）
+    // 2026-10-10 新增「告警历史」——告警可手动关闭，关闭后不消失，只是收进这里。
+    auto *opRow = new QHBoxLayout;
+    opRow->setSpacing(10);
+    opRow->addStretch();
+    auto *scanBtn = Ui::button(tr("立即扫描"));
+    scanBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("view-refresh")));
+    connect(scanBtn, &DPushButton::clicked, this, &DiskUsagePage::onScanNow);
+    opRow->addWidget(scanBtn);
     auto *svcBtn = Ui::button(tr("监控设置"));
     svcBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("preferences-system")));
     connect(svcBtn, &DPushButton::clicked, this, &DiskUsagePage::onOpenSettings);
-    svcRow->addWidget(svcBtn);
-    cl1->addLayout(svcRow);
+    opRow->addWidget(svcBtn);
+    m_alertHistoryBtn = Ui::button(tr("告警历史"));
+    m_alertHistoryBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("appointment-soon")));
+    m_alertHistoryBtn->setToolTip(tr("查看全部历史告警，包括已手动关闭的"));
+    connect(m_alertHistoryBtn, &DPushButton::clicked,
+            this, &DiskUsagePage::onOpenAlertHistory);
+    opRow->addWidget(m_alertHistoryBtn);
+    cl1->addLayout(opRow);
 
-    // 告警：语义 Banner（图标 + 柔和底 + 中性正文），替代原 panshiWarnBox 自绘框
+    // 告警：语义 Banner（图标 + 柔和底 + 中性正文），替代原 panshiWarnBox 自绘框。
+    // 2026-10-10：改为可关闭；关闭动作落进 dismissed 列表并持久化，
+    // 下一次 refresh 不会再把同一条弹回来，但历史里仍可查看。
     m_alertBanner = new PanshiUi::PanshiInlineBanner(c1);
+    m_alertBanner->setClosable(true);
     m_alertBanner->hide();
+    connect(m_alertBanner, &PanshiUi::PanshiInlineBanner::dismissed,
+            this, &DiskUsagePage::onDismissAlert);
     cl1->addWidget(m_alertBanner);
     lay->addWidget(c1);
 }
 
-// ---------- ② 时间线 ----------
+// ---------- ③ 时间线（明细：结论在上方「区间汇总」，此处只负责过程） ----------
 void DiskUsagePage::buildTimelineCard(QVBoxLayout *lay)
 {
     auto *c2 = new PanshiUi::PanshiSection(tr("时间线"),
                                            tr("折线展示每日磁盘占用；点击数据点查看该日增长详情"));
     auto *tl = c2->content();
 
-    // 工具栏：图例 + 立即扫描（进度条同排）；图例色取自 DPalette，自动跟随主题
-    // 「立即扫描」作为该组的组级操作挂在标题行右侧（与 policypage 的保存按钮一致）
-    auto *scanBtn = Ui::button(tr("立即扫描"));
-    connect(scanBtn, &DPushButton::clicked, this, &DiskUsagePage::onScanNow);
-    c2->addHeaderWidget(scanBtn);
-
+    // 工具行：图例（左）+ 范围分段选择（右）。
+    // 「立即扫描」已上移到概览卡，标题行保持干净；图例色取自 DPalette，自动跟随主题。
+    // 图例文字取短形态（正常/异常/选中），完整语义走 tooltip —— 与范围控件
+    // 同行后不再有整行放不下、被外层 ScrollBarAlwaysOff 静默裁剪的风险。
     auto *toolRow = new QHBoxLayout;
-    toolRow->setSpacing(18);
-    toolRow->addWidget(Ui::legendDot(PanshiUi::Semantic::Accent, tr("正常增长")));
-    toolRow->addWidget(Ui::legendDot(PanshiUi::Semantic::Danger, tr("异常增长")));
-    toolRow->addWidget(Ui::legendDot(PanshiUi::Semantic::Warning, tr("选中日")));
-    toolRow->addWidget(Ui::legendLine(tr("趋势")));
+    toolRow->setSpacing(10);
+    auto *lgNormal = Ui::legendDot(PanshiUi::Semantic::Accent, tr("正常"));
+    lgNormal->setToolTip(tr("正常增长"));
+    toolRow->addWidget(lgNormal);
+    auto *lgAbnormal = Ui::legendDot(PanshiUi::Semantic::Danger, tr("异常"));
+    lgAbnormal->setToolTip(tr("异常增长"));
+    toolRow->addWidget(lgAbnormal);
+    auto *lgSelected = Ui::legendDot(PanshiUi::Semantic::Warning, tr("选中"));
+    lgSelected->setToolTip(tr("选中日"));
+    toolRow->addWidget(lgSelected);
+    auto *lgTrend = Ui::legendLine(tr("趋势"));
+    lgTrend->setToolTip(tr("趋势线"));
+    toolRow->addWidget(lgTrend);
     toolRow->addStretch();
+    // 范围选择器已上移到「区间汇总」卡（2026-10-10）——它定义的是区间，
+    // 而区间汇总现在排在时间线前面；放在这里会变成「控件在它所控制的结论下方」。
     tl->addLayout(toolRow);
-
-    // 范围选择行：预设 + 自定义（点击弹出日历选择）
-    auto *presetRow = new QHBoxLayout;
-    presetRow->setSpacing(8);
-    const int presets[] = {15, 30, 90, 180, 365};
-    for (int days : presets) {
-        auto *b = Ui::button(tr("%1 天").arg(days));
-        connect(b, &DPushButton::clicked, this, [this, days] { onPreset(days); });
-        presetRow->addWidget(b);
-    }
-    presetRow->addStretch();
-    auto *customBtn = Ui::button(tr("自定义"));
-    customBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("appointment-soon")));
-    connect(customBtn, &DPushButton::clicked, this, &DiskUsagePage::onOpenCustomRange);
-    presetRow->addWidget(customBtn);
-    tl->addLayout(presetRow);
-
-    // 当前显示范围提示（系统盘 / 指定目录）+ 返回入口
-    // 提示属说明性文字，用中性 Muted（原 panshiTipText 会给它上强调色，语义过重）
-    auto *hintRow = new QHBoxLayout;
-    hintRow->setSpacing(10);
-    m_timelineHint = Ui::rowDesc(QString());
-    hintRow->addWidget(m_timelineHint, 1);
-    m_backTimelineBtn = Ui::button(tr("返回系统盘"));
-    m_backTimelineBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("view-refresh")));
-    m_backTimelineBtn->hide();
-    connect(m_backTimelineBtn, &DPushButton::clicked, this, &DiskUsagePage::onBackToSystemTimeline);
-    hintRow->addWidget(m_backTimelineBtn);
-    tl->addLayout(hintRow);
 
     m_chart = new UsageChart(c2);
     tl->addWidget(m_chart);
     connect(m_chart, &UsageChart::dateSelected, this, &DiskUsagePage::onChartDateSelected);
 
+    // 图表下方单行：当前显示对象（左）+ 加载状态（右）。
+    //
+    // ⚠️ 「返回系统盘」已从这里移走（2026-10-10 用户反馈：放在时间线区域里不方便）。
+    //    时间线只负责**陈述当前在看什么**，返回入口跟着「选目录」的动作走 ——
+    //    即下方「磁盘分析」区顶部的上下文条（面包屑）。两处不再重复摆按钮，
+    //    避免同一个动作两个入口、状态各自为政。
+    auto *footerRow = new QHBoxLayout;
+    footerRow->setSpacing(10);
+    m_timelineHint = Ui::rowDesc(QString());
+    footerRow->addWidget(m_timelineHint, 1);
     m_loadStatus = Ui::rowDesc(QString());
-    tl->addWidget(m_loadStatus);
+    footerRow->addWidget(m_loadStatus);
+    tl->addLayout(footerRow);
     lay->addWidget(c2);
 }
 
-// ---------- ③ 分析标签页：汇总 / 详情 / 排行 ----------
-void DiskUsagePage::buildAnalysisTabs(QVBoxLayout *lay)
+// ---------- ② 区间汇总（结论先行：先给答案，再看下方折线明细） ----------
+void DiskUsagePage::buildSummaryCard(QVBoxLayout *lay)
 {
-    m_tabBar = new DTabBar(this);
-    m_tabBar->setObjectName(QStringLiteral("panshiTabBar"));
-    m_tabBar->setVisibleAddButton(false);
-    m_tabBar->addTab(tr("区间汇总"));
-    m_tabBar->addTab(tr("增长详情"));
-    m_tabBar->addTab(tr("占用排行"));
-    lay->addWidget(m_tabBar);
+    // ⚠️ 本卡原为「四张等权 PanshiStateCard 一字排开」，用户反馈「有点乱」。
+    //    拆开看，乱来自四个叠在一起的问题：
+    //      1. **没有焦点** —— 净增长/日均/最大单日/起始日同样大小、同样权重，
+    //         眼睛不知道先落哪儿；而「这段区间涨了多少」才是唯一结论。
+    //      2. **行高参差** —— 只有「最大单日」多一枚日期徽章，同排其余三张没有，
+    //         一排卡片高低不齐（这是最直观的"乱"）。
+    //      3. **类型混杂** —— 三个是容量、一个是日期，却共用同一套大数值样式；
+    //         「趋势起始日」被迫降级成小字号，看起来像一张"没数据的卡"。
+    //      4. **区间没被陈述** —— 卡叫「区间汇总」却通篇没说是哪一段，
+    //         范围控件还远在另一张卡里，数字悬空没有主语。
+    //    重设计：主角（净增长，T2 大数值）+ 次要指标（统一单行的键值网格，
+    //    日期退为同行备注）+ 区间陈述 + 容量预测，层级一次拉开。
+    auto *c3 = new PanshiUi::PanshiSection(tr("区间汇总"),
+                                           tr("所选范围内的增长结论与容量预测"));
+    auto *sl = c3->content();
 
-    m_tabs = new QStackedWidget(this);
-    m_tabs->setObjectName(QStringLiteral("panshiContent"));
+    // ---- 工具行：范围选择（左）+ 区间陈述（右） ----
+    // 范围控件放在这里而非时间线：本卡已排到时间线前面，而控件定义的是「区间」
+    // —— 让「选范围」和「看这段范围的结论」挨在一起，避免控件在结论下方。
+    auto *toolRow = new QHBoxLayout;
+    toolRow->setSpacing(PanshiUi::Space::S);
 
-    auto *sumPage = new QWidget(m_tabs);
-    auto *sumLay = new QVBoxLayout(sumPage);
-    sumLay->setContentsMargins(0, 12, 0, 0);
-    sumLay->setSpacing(12);
-    buildSummaryTab(sumLay);
-    m_tabs->addWidget(sumPage);
+    // 范围选择：DButtonBox 分段控件（紧凑 + 可高亮当前所选范围），替代平铺按钮排。
+    // 互斥高亮在 onPreset / onOpenCustomRange 里手动维护（见对应实现）。
+    m_rangeBox = new DButtonBox(c3);
+    QList<DButtonBoxButton *> rangeBtns;
+    const int presets[] = {15, 30, 90, 180, 365};
+    for (int days : presets) {
+        auto *b = new DButtonBoxButton(tr("%1 天").arg(days), m_rangeBox);
+        connect(b, &DButtonBoxButton::clicked, this, [this, days] { onPreset(days); });
+        rangeBtns.append(b);
+    }
+    auto *customBtn = new DButtonBoxButton(tr("自定义"), m_rangeBox);
+    connect(customBtn, &DButtonBoxButton::clicked, this, &DiskUsagePage::onOpenCustomRange);
+    rangeBtns.append(customBtn);
+    m_rangeBox->setButtonList(rangeBtns, true);
+    toolRow->addWidget(m_rangeBox, 0, Qt::AlignVCenter);
 
-    auto *detPage = new QWidget(m_tabs);
-    auto *detLay = new QVBoxLayout(detPage);
-    detLay->setContentsMargins(0, 12, 0, 0);
-    detLay->setSpacing(12);
-    buildDetailTab(detLay);
-    m_tabs->addWidget(detPage);
+    // 区间陈述：补上数字的主语（哪一段 · 多少天 · 几条记录）
+    m_sumRangeLabel = Ui::rowDesc(QString());
+    m_sumRangeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    toolRow->addWidget(m_sumRangeLabel, 1);
+    sl->addLayout(toolRow);
 
-    auto *rankPage = new QWidget(m_tabs);
-    auto *rankLay = new QVBoxLayout(rankPage);
-    rankLay->setContentsMargins(0, 12, 0, 0);
-    rankLay->setSpacing(12);
-    buildRankTab(rankLay);
-    m_tabs->addWidget(rankPage);
+    // ---- 英雄区：净增长（左） │ 容量预测（右） ----
+    // 结构对偶：左边回答「已经涨了多少」（事实），右边回答「按这个速度还能撑多久」
+    // （推论）。原设计把容量预测做成页面最底部的整宽 Banner，与净增长上下相隔
+    // 一整个次要指标网格 —— 两者本是同一条因果链，却被拆到两个视区，读者要
+    // 上下扫才能把「涨得多」和「撑不久」连起来。并置后这条因果链一眼可见。
+    // 两栏都不套卡片底：本卡已在 PanshiSection 里，再套一层就是「卡中卡」；
+    // 层级交给字号（T2 vs T4）、语义色与一条竖分隔线。
+    m_heroRow = new QBoxLayout(QBoxLayout::LeftToRight);
+    m_heroRow->setSpacing(PanshiUi::Space::XL);
 
-    lay->addWidget(m_tabs, 1);
+    // ---- 左栏：净增长 ----
+    // 顺序即层级（同 PanshiStateCard 的约定）：标签（这是什么）→ 值（结论）
+    // → 副说明（来路）。
+    m_heroMain = new QWidget(c3);
+    auto *heroLay = new QVBoxLayout(m_heroMain);
+    heroLay->setContentsMargins(0, 0, 0, 0);
+    heroLay->setSpacing(PanshiUi::Space::XS);
+    heroLay->addWidget(PanshiUi::makeLabel(tr("净增长"), PanshiUi::TextLevel::Desc,
+                                           PanshiUi::Semantic::Muted));
+    m_sumNet = PanshiUi::makeLabel(QStringLiteral("-"), PanshiUi::TextLevel::Value,
+                                   PanshiUi::Semantic::Accent);
+    m_sumNet->setWordWrap(true);
+    heroLay->addWidget(m_sumNet);
+    // 副说明：给出「涨了多少」的参照系，否则孤立的大数字没有落点
+    m_sumBeginEnd = Ui::rowDesc(QString());
+    heroLay->addWidget(m_sumBeginEnd);
+    m_heroRow->addWidget(m_heroMain, 1);
 
-    connect(m_tabBar, &DTabBar::currentChanged, m_tabs, &QStackedWidget::setCurrentIndex);
-    // 切到「区间汇总」标签后补喂一次宽度：汇总卡行在该标签页内，
-    // 标签页非当前时它是隐藏的（QStackedWidget 内 widget 的 show
-    // 不会冒泡成 BasePage::showEvent），故不能只依赖基类那两条路径。
-    connect(m_tabBar, &DTabBar::currentChanged, this, [this](int idx) {
-        if (idx == 0 && m_sumRow) {
-            int avail = width();
-            if (m_contentScroll && m_contentScroll->viewport())
-                avail = m_contentScroll->viewport()->width();
-            m_sumRow->setAvailableWidth(avail - 24 * 2);
-        }
-    });
-}
+    // 竖分隔线：把「事实」与「推论」两栏在视觉上分开。
+    // 不用 QFrame::VLine —— 它走 QSS 边框色，不受 DPalette 主题切换管辖；
+    // 这里用 palette 填色 + setFixedWidth(1)，颜色随 appPalette() 走。
+    // 高度取整栏（Expanding 撑满），不跟内容高度走：半截短线读起来像
+    // "这里少了一块"，整高竖线才读得出"这是两栏的分界"。
+    m_heroSep = new QWidget(c3);
+    m_heroSep->setFixedWidth(1);
+    m_heroSep->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    {
+        auto *bar = new QWidget(m_heroSep);
+        bar->setAutoFillBackground(true);
+        QPalette pal = bar->palette();
+        pal.setColor(QPalette::Window, DPalette::FrameBorder);
+        bar->setPalette(pal);
+        auto *sepLay = new QVBoxLayout(m_heroSep);
+        sepLay->setContentsMargins(0, 0, 0, 0);
+        sepLay->setSpacing(0);
+        sepLay->addWidget(bar);   // 无 stretch → 随容器高度整高铺满
+    }
+    m_heroRow->addWidget(m_heroSep, 0);
 
-// ---------- ③a 区间汇总标签 ----------
-void DiskUsagePage::buildSummaryTab(QVBoxLayout *lay)
-{
-    // 数值卡：改用 PanshiStateCard（组件承担语义色与字号，不再用
-    // panshiStatValue + stat 属性 + QSS 属性选择器染色）
-    auto makeStat = [](const QString &title, PanshiUi::Semantic s,
-                       PanshiUi::PanshiStateCard **out) {
-        auto *card = new PanshiUi::PanshiStateCard(title);
-        card->setValue(QStringLiteral("-"), s);
-        *out = card;
-        return card;
+    // ---- 右栏：容量预测 ----
+    // 三段式与左栏同构（标签 → 值 → 备注），只是整体降一档字号：
+    // 预测是「推论」不该和「事实」抢焦点，所以用 T4 而非 T2。
+    m_forecastBox = new QWidget(c3);
+    auto *fcLay = new QVBoxLayout(m_forecastBox);
+    fcLay->setContentsMargins(0, 0, 0, 0);
+    fcLay->setSpacing(PanshiUi::Space::XS);
+    {
+        // 标签行：图标 + 文字。图标随语义切换，是颜色之外的第二条信息通道
+        // （色弱用户与深浅主题下都还能分辨）——沿用 Banner 的做法。
+        auto *fcHead = new QWidget(m_forecastBox);
+        auto *headLay = new QHBoxLayout(fcHead);
+        headLay->setContentsMargins(0, 0, 0, 0);
+        headLay->setSpacing(PanshiUi::Space::S);
+        m_fcIcon = new DLabel(fcHead);
+        m_fcIcon->setFixedSize(PanshiUi::Size::IconSmall, PanshiUi::Size::IconSmall);
+        m_fcIcon->setAlignment(Qt::AlignCenter);
+        headLay->addWidget(m_fcIcon, 0, Qt::AlignVCenter);
+        m_fcLabel = PanshiUi::makeLabel(tr("容量预测"), PanshiUi::TextLevel::Desc,
+                                        PanshiUi::Semantic::Muted);
+        headLay->addWidget(m_fcLabel, 0, Qt::AlignVCenter);
+        headLay->addStretch(1);
+        fcLay->addWidget(fcHead);
+    }
+    m_fcValue = PanshiUi::makeLabel(QStringLiteral("-"), PanshiUi::TextLevel::ValueSmall,
+                                    PanshiUi::Semantic::Warning);
+    m_fcValue->setWordWrap(true);
+    fcLay->addWidget(m_fcValue);
+    m_fcNote = Ui::rowDesc(QString());
+    fcLay->addWidget(m_fcNote);
+    // 最小宽度：低于它「约 N 天后写满」会折成 4 行，右栏比左栏高出一倍。
+    // 这是本项目「显式最小宽度是挤压唯一防线」的用法 —— 但方向相反：
+    // 不是防挤压，而是**触发主动折行**（见 updateHeroLayout）。
+    m_forecastBox->setMinimumWidth(220);
+    m_heroRow->addWidget(m_forecastBox, 0);
+    sl->addLayout(m_heroRow);
+    updateHeroLayout();
+
+    sl->addWidget(new PanshiUi::PanshiSeparator(c3));
+
+    // ---- 次要指标：统一单行的键值网格 ----
+    // 用 QGridLayout 而不是「每行一个 QHBoxLayout」—— 网格共享列宽，
+    // 三行才会成为整齐的两列；分开写各自按内容伸缩，值参差不齐。
+    // 每行的「值 + 备注」装进同一个宿主再右对齐，保证所有行的右边缘一致
+    // （否则有备注的行和没备注的行会差出备注那一列的宽度）。
+    auto *grid = new QGridLayout;
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setVerticalSpacing(PanshiUi::Space::XS);
+    grid->setHorizontalSpacing(PanshiUi::Space::M);
+    grid->setColumnStretch(0, 1);   // 标签列吃掉剩余空间 → 值靠右成列
+
+    // 返回 {值, 备注}；备注为空时自动隐藏（不占位）
+    auto addMetric = [grid](int row, const QString &title,
+                            PanshiUi::Semantic s) -> QPair<DLabel *, DLabel *> {
+        grid->addWidget(Ui::rowDesc(title), row, 0);
+        auto *host = new QWidget;
+        auto *hl = new QHBoxLayout(host);
+        hl->setContentsMargins(0, 0, 0, 0);
+        // 值与备注之间留 L(16)：默认 S(8) 时「1.42 GB  2026-10-10」读起来是
+        // 一个整体，日期被误认成数值的一部分；拉开一档才看得出「值 / 出处」。
+        hl->setSpacing(PanshiUi::Space::L);
+        auto *v = PanshiUi::makeLabel(QStringLiteral("-"), PanshiUi::TextLevel::Body, s);
+        hl->addWidget(v, 0, Qt::AlignVCenter);
+        auto *note = PanshiUi::makeLabel(QString(), PanshiUi::TextLevel::Aux,
+                                         PanshiUi::Semantic::Muted);
+        note->hide();
+        hl->addWidget(note, 0, Qt::AlignVCenter);
+        grid->addWidget(host, row, 1, Qt::AlignRight | Qt::AlignVCenter);
+        return qMakePair(v, note);
     };
 
-    // 数值卡排布改用 PanshiResponsiveCardRow：窄窗下自动折行。
-    // 原为固定 4 列 QGridLayout —— 与总览页同一问题：窄窗下整行横向溢出后
-    // 被外层 makeScrollArea（ScrollBarAlwaysOff）静默裁剪，第 4 卡不可达。
-    auto *row = new PanshiUi::PanshiResponsiveCardRow(4);
-    row->addCard(makeStat(tr("净增长"), PanshiUi::Semantic::Accent, &m_sumNet));
-    row->addCard(makeStat(tr("日均增长"), PanshiUi::Semantic::Accent, &m_sumDaily));
-    // 最大单日：可视为需留意的峰值 → Warning（原 orange）
-    row->addCard(makeStat(tr("最大单日"), PanshiUi::Semantic::Warning, &m_sumMax));
-    row->addCard(makeStat(tr("趋势起始日"), PanshiUi::Semantic::Accent, &m_sumTrend));
-    m_sumRow = row;
-    lay->addWidget(row);
-    // 宽度喂入交给 BasePage（viewport Resize + showEvent 双路径），
-    // 与总览页/保护页口径统一 —— 单靠 resizeEvent 会在隐藏页首次显示时采到未布局尺寸。
-    registerResponsiveCardRow(m_sumRow, m_contentScroll, 24 * 2);
+    const auto dailyPair = addMetric(0, tr("日均增长"), PanshiUi::Semantic::Normal);
+    m_sumDaily = dailyPair.first;
+    // 最大单日：需留意的峰值 → Warning；日期退为同行小字备注，不再单独成卡
+    const auto maxPair = addMetric(1, tr("最大单日"), PanshiUi::Semantic::Warning);
+    m_sumMax = maxPair.first;
+    m_sumMaxDay = maxPair.second;
+    const auto trendPair = addMetric(2, tr("增长起点"), PanshiUi::Semantic::Normal);
+    m_sumTrend = trendPair.first;
+    sl->addLayout(grid);
 
-    // 容量预测：语义 Banner（图标 + 柔和底 + 中性正文），替代原 panshiTipBar 自绘框
-    m_sumEtaBar = new PanshiUi::PanshiInlineBanner;
-    m_sumEtaBar->setSemantic(PanshiUi::Semantic::Warning);
-    lay->addWidget(m_sumEtaBar);
+    // 注：原挂在卡片底部的整宽容量预测 Banner 已移除，搬进上方英雄区右栏
+    // （m_forecastBox）—— 见 buildSummaryCard 里的结构对偶说明。
 
-    auto *topTitle = Ui::rowLabel(tr("区间增长 Top 项"));
-    lay->addWidget(topTitle);
-    m_sumTop = Ui::rowDesc(QString());
-    lay->addWidget(m_sumTop);
+    lay->addWidget(c3);
 }
 
-// ---------- ③b 增长详情标签 ----------
-void DiskUsagePage::buildDetailTab(QVBoxLayout *lay)
+/**
+ * 英雄区响应式重排。
+ *
+ * ⚠️ 当前 MainWindow 有 setMinimumSize(920, 620)，viewport 最窄约 720px ——
+ *    **高于下面这个阈值，所以折行分支在现行窗口约束下走不到**。
+ *    保留它是为了「窗口约束一旦放开（或页面被嵌入更窄容器）不必回头重做」，
+ *    而不是现在就在生效。若哪天把最小宽度降到 600 以下，这里是真会被触发的。
+ *
+ * 阈值 520 的来历：左栏 T2 大数值「1.45 GB」+ 副说明约需 260px，
+ * 右栏最小 220px，加间距 32 + 分隔线 1 = 513px。低于此值再横向摆，
+ * 顶到最小宽度的挤压只会更糟 —— 不如主动折成上下，让两栏各自拿满整宽。
+ *
+ * 只在方向真正变化时改 setDirection：QBoxLayout::setDirection 每次调用都会
+ * 触发布局重算，而 resizeEvent 在拖窗口时会连续触发几十次。
+ */
+void DiskUsagePage::updateHeroLayout()
 {
-    // 说明：解释"增长详情"含义，避免用户对列表项数变化产生疑惑
-    auto *tip = Ui::rowDesc(tr("说明：这里列出所选日期（点击时间线数据点）相对前一日有增长的目录/文件，"
-                               "按增长量排序，最多 8 项；每天增长的目录数量不同，列表项数也随之变化，"
-                               "当天无增长时则显示提示。点击目录行可切换上方时间线。"));
-    lay->addWidget(tip);
-
-    m_detailTable = makeTable({tr("名称"), tr("大小"), tr("操作")}, this);
-    applyTableWidths(m_detailTable, 3);
-    PanshiUi::setTableAccessibleName(m_detailTable, tr("增长详情表"));
-    connect(m_detailTable, &QTableWidget::cellClicked,
-            this, &DiskUsagePage::onDetailCellClicked);
-    lay->addWidget(m_detailTable);
+    if (!m_heroRow)
+        return;
+    const bool wide = (m_contentScroll && m_contentScroll->viewport()
+                           ? m_contentScroll->viewport()->width()
+                           : width())
+                      >= 520;
+    const QBoxLayout::Direction want =
+        wide ? QBoxLayout::LeftToRight : QBoxLayout::TopToBottom;
+    if (m_heroRow->direction() != want) {
+        m_heroRow->setDirection(want);
+        // 竖分隔线只在并置时有意义；折成上下后留着就是一根莫名其妙的短竖线
+        m_heroSep->setVisible(wide);
+    }
 }
 
-// ---------- ③c 占用排行标签 ----------
-void DiskUsagePage::buildRankTab(QVBoxLayout *lay)
+// ---------- ③ 时间线 ----------
+void DiskUsagePage::buildAnalysisSection(QVBoxLayout *lay)
 {
-    auto *row = new QHBoxLayout;
-    row->setSpacing(10);
-    m_rankBackBtn = Ui::button(tr("返回上级"));
-    m_rankBackBtn->hide();
-    connect(m_rankBackBtn, &DPushButton::clicked, this, &DiskUsagePage::onRankBack);
-    m_rankPath = Ui::rowLabel(QStringLiteral("/"));
-    row->addWidget(m_rankBackBtn);
-    row->addWidget(m_rankPath, 1);
-    lay->addLayout(row);
-    m_rankTable = makeTable({tr("名称"), tr("大小"), tr("占比"), tr("操作")}, this);
-    applyTableWidths(m_rankTable, 4);
-    PanshiUi::setTableAccessibleName(m_rankTable, tr("占用排行表"));
-    connect(m_rankTable, &QTableWidget::cellClicked,
-            this, &DiskUsagePage::onRankCellClicked);
-    connect(m_rankTable, &QTableWidget::cellDoubleClicked,
-            this, &DiskUsagePage::onRankCellDoubleClicked);
-    lay->addWidget(m_rankTable);
+    auto *sec = new PanshiUi::PanshiSection(
+        tr("磁盘分析"),
+        tr("同一份目录占用数据的三种看法：看结构（构成）、看变化（增长）、看全量（排行）"));
+    auto *sl = sec->content();
+
+    // ---- 上下文条：返回入口 + 面包屑 + 视角分段 ----
+    //
+    // 设计说明（2026-10-10）：「返回系统盘」原本挂在时间线卡底部，
+    // 离用户"点目录"的位置太远 —— 于是导航**贴着操作对象**放：
+    //   · 返回系统盘 = 回到根（时间线恢复系统盘 + 列表回到顶层）
+    //   · 返回上级   = 逐级退出下钻
+    //   · 面包屑     = 标出当前浏览位置，祖先层可直接点回去
+    // 两个按钮**常驻只切可用状态**，不做显示/隐藏 —— 位置固定的控件比
+    // 时有时无的控件好找（不用每次进目录模式都重新搜索"返回"在哪）。
+    auto *ctxRow = new QHBoxLayout;
+    ctxRow->setSpacing(PanshiUi::Space::S);
+
+    m_backRootBtn = Ui::button(tr("返回系统盘"));
+    m_backRootBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("go-home")));
+    m_backRootBtn->setAccessibleName(tr("返回系统盘"));
+    m_backRootBtn->setToolTip(tr("时间线恢复为系统盘占用，列表回到顶层目录"));
+    connect(m_backRootBtn, &DPushButton::clicked,
+            this, &DiskUsagePage::onBackToSystemTimeline);
+    ctxRow->addWidget(m_backRootBtn);
+
+    m_backUpBtn = Ui::button(tr("返回上级"));
+    m_backUpBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("go-previous")));
+    m_backUpBtn->setAccessibleName(tr("返回上级"));
+    m_backUpBtn->setToolTip(tr("回到上一层目录"));
+    connect(m_backUpBtn, &DPushButton::clicked,
+            this, [this] { popBrowseTo(qMax(0, m_rankFrames.size() - 1)); });
+    ctxRow->addWidget(m_backUpBtn);
+
+    m_crumbBox = new QWidget(sec);
+    m_crumbLay = new QHBoxLayout(m_crumbBox);
+    m_crumbLay->setContentsMargins(0, 0, 0, 0);
+    m_crumbLay->setSpacing(PanshiUi::Space::XS);
+    ctxRow->addWidget(m_crumbBox, 1);
+
+    m_viewBox = new DButtonBox(sec);
+    QList<DButtonBoxButton *> viewBtns;
+    const QString viewLabels[] = {tr("构成"), tr("增长"), tr("排行")};
+    for (int i = 0; i < 3; ++i) {
+        auto *b = new DButtonBoxButton(viewLabels[i], m_viewBox);
+        b->setToolTip(viewHintFor(static_cast<ViewMode>(i)));
+        connect(b, &DButtonBoxButton::clicked, this,
+                [this, i] { onViewModeChanged(i); });
+        viewBtns.append(b);
+    }
+    m_viewBox->setButtonList(viewBtns, true);
+    syncViewBox();
+    ctxRow->addWidget(m_viewBox, 0, Qt::AlignVCenter);
+    sl->addLayout(ctxRow);
+
+    m_viewHint = Ui::rowDesc(QString());
+    sl->addWidget(m_viewHint);
+
+    // ---- 表格：三视角共用一张 ----
+    m_analysisTable = makeTable({tr("名称"), tr("大小"), tr("占比"), tr("操作")}, sec);
+    applyTableWidths(m_analysisTable, 4);
+    PanshiUi::setTableAccessibleName(m_analysisTable, tr("磁盘分析表"));
+    connect(m_analysisTable, &QTableWidget::cellClicked,
+            this, &DiskUsagePage::onAnalysisCellClicked);
+    connect(m_analysisTable, &QTableWidget::cellDoubleClicked,
+            this, &DiskUsagePage::onAnalysisCellDoubleClicked);
+    sl->addWidget(m_analysisTable);
+
+    // ---- 其它分区（全盘视角，与上表互补） ----
+    sl->addWidget(new PanshiUi::PanshiSeparator(sec));
+    auto *otherTitle = Ui::rowLabel(tr("其它分区"));
+    otherTitle->setToolTip(tr("系统盘之外的其它分区（按设备去重，容量/已用取自 df）；"
+                              "点击行右侧按钮可查看该分区内部构成"));
+    sl->addWidget(otherTitle);
+    auto *otherBox = new QWidget(sec);
+    m_otherLay = new QVBoxLayout(otherBox);
+    m_otherLay->setContentsMargins(0, 0, 0, 0);
+    m_otherLay->setSpacing(PanshiUi::Space::XS);
+    sl->addWidget(otherBox);
+    rebuildOtherPartitions();
+
+    lay->addWidget(sec);
+}
+
+// ---------- ④b 视角说明（分段按钮 tooltip 与提示行共用同一份文案） ----------
+QString DiskUsagePage::viewHintFor(ViewMode v)
+{
+    switch (v) {
+    case ViewMode::Composition:
+        return tr("构成：系统盘顶层目录的占用结构（前 5 项 + 其他），占比 = 占系统盘已用");
+    case ViewMode::Growth:
+        return tr("增长：所选日期相对前一日有增长的目录/文件（最多 8 项），"
+                  "占比 = 该目录增量占当日总增量");
+    case ViewMode::Ranking:
+        return tr("排行：当前目录下所有子项从大到小；单击行让上方时间线跟随，双击进入子目录");
+    }
+    return QString();
+}
+
+/** 「占比」单元格：右侧百分比数字 + 左侧细占比条（原磁盘构成的条并入表格） */
+void DiskUsagePage::setShareCell(QTableWidget *t, int row, int col, double pct, bool valid)
+{
+    auto *holder = new QWidget(t);
+    auto *hl = new QHBoxLayout(holder);
+    hl->setContentsMargins(6, 0, 6, 0);
+    hl->setSpacing(6);
+
+    auto *val = new DLabel(valid ? QString::number(pct, 'f', 1) + QStringLiteral("%")
+                                 : QStringLiteral("—"),
+                           holder);
+    DFontSizeManager::instance()->bind(val, DFontSizeManager::T6);
+    val->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    val->setFixedWidth(46);
+
+    auto *bar = new PanshiUi::PanshiFlatProgress(holder);
+    bar->setRange(0, 1000);
+    bar->setFixedWidth(56);
+    bar->setFixedHeight(PanshiUi::Size::ThinProgress + 4);
+    bar->setValue(valid ? qBound(0, int(pct * 10.0), 1000) : 0);
+
+    hl->addWidget(bar, 0, Qt::AlignVCenter);
+    hl->addWidget(val, 0, Qt::AlignVCenter);
+    t->setCellWidget(row, col, holder);
+}
+
+// ---------- ④c 表格渲染：三个视角共用的唯一出口 ----------
+void DiskUsagePage::updateAnalysis()
+{
+    if (!m_analysisTable)
+        return;
+    // 同 updateDayDetail：空数据占位那条 early return 也得补无障碍，用守卫兜住
+    const A11yOnScopeExit a11y{m_analysisTable};
+
+    struct Row
+    {
+        QString path;         // 空 = 信息行（不可打开 / 不可下钻）
+        QString name;
+        QString sizeText;
+        double pct = 0.0;
+        bool pctValid = false;
+        bool isDir = true;
+        bool drillable = false;
+    };
+    QList<Row> rows;
+    QString emptyHint;
+
+    if (m_view == ViewMode::Growth) {
+        // ---------- 视角：增长（口径 = 某一天的环比增量） ----------
+        if (!m_timelineDir.isEmpty()) {
+            const int idx = dateIndexInRecords(m_records, m_selected);
+            if (idx < 0) {
+                emptyHint = tr("所选日期不在当前加载范围内");
+            } else {
+                const qint64 cur = dirSizeInRecord(m_records.at(idx), m_timelineDir);
+                const qint64 prev =
+                    idx > 0 ? dirSizeInRecord(m_records.at(idx - 1), m_timelineDir) : -1;
+                Row r1;
+                r1.path = m_timelineDir;
+                r1.name = tr("目录 %1").arg(m_timelineDir);
+                r1.sizeText = cur >= 0 ? formatSize(cur) : tr("无数据");
+                rows.append(r1);
+                Row r2;
+                if (prev >= 0 && cur >= 0) {
+                    const qint64 diff = cur - prev;
+                    r2.name = tr("较前一日变化");
+                    r2.sizeText =
+                        (diff >= 0 ? QStringLiteral("+") : QString()) + formatSize(diff);
+                } else {
+                    r2.name = tr("前一日暂无数据");
+                }
+                rows.append(r2);
+            }
+        } else {
+            const int idx = dateIndexInRecords(m_records, m_selected);
+            if (idx < 0) {
+                emptyHint = tr("点击时间线上任意数据点，查看该日的增长来源");
+            } else {
+                DiskDayRecord prev;
+                if (idx > 0)
+                    prev = m_records.at(idx - 1);
+                const qint64 totalGrowth =
+                    idx > 0 ? m_records.at(idx).total - m_records.at(idx - 1).total : 0;
+                const QList<DiskItem> items =
+                    DiskHistoryStore::topGrowthItems(prev, m_records.at(idx), 8);
+                if (items.isEmpty()) {
+                    emptyHint = tr("该日无显著增长");
+                } else {
+                    for (const DiskItem &it : items) {
+                        Row r;
+                        r.path = it.path;
+                        r.name = it.path;
+                        r.sizeText = formatSize(it.size);
+                        r.isDir = it.isDir;
+                        r.pctValid = totalGrowth > 0;
+                        r.pct = totalGrowth > 0 ? double(it.size) * 100.0 / totalGrowth : 0.0;
+                        rows.append(r);
+                    }
+                }
+            }
+        }
+    } else {
+        // ---------- 视角：构成 / 排行（同一份子项，只差截取长度） ----------
+        QList<DiskItem> items;
+        qint64 total = 0;
+        if (m_rankCurrentPath.isEmpty()) {
+            if (!m_records.isEmpty()) {
+                items = m_records.last().topLevel;
+                total = m_records.last().total;
+            }
+        } else {
+            items = m_rankItems;          // 下钻结果（异步，为空即尚未就绪）
+            for (const DiskItem &it : items)
+                total += it.size;
+        }
+        std::sort(items.begin(), items.end(),
+                  [](const DiskItem &a, const DiskItem &b) { return a.size > b.size; });
+
+        if (items.isEmpty()) {
+            emptyHint = m_scanner.isBusy()
+                            ? tr("正在读取子目录…")
+                            : tr("暂无数据：请开启监控或点击“立即扫描”");
+        } else {
+            const bool compo = (m_view == ViewMode::Composition);
+            const int n = qMin(items.size(), compo ? 5 : 200);
+            qint64 sum = 0;
+            for (int i = 0; i < n; ++i)
+                sum += items.at(i).size;
+            // 占比分母：子项之和与区间总占用取较大者。
+            // 顶层扫描已加 -x（只统计根分区自身），新记录下两者同口径；
+            // 历史旧记录（-x 之前）仍可能含跨分区数据，硬用 df / 已用会算出
+            // >100% 的假占比 —— 取 max 后任何数据下都 ≤100%。
+            const qint64 denom = qMax(total, sum);
+            for (int i = 0; i < n; ++i) {
+                Row r;
+                r.path = items.at(i).path;
+                r.name = items.at(i).path;
+                r.sizeText = formatSize(items.at(i).size);
+                r.isDir = items.at(i).isDir;
+                r.drillable = items.at(i).isDir;
+                r.pctValid = denom > 0;
+                r.pct = denom > 0 ? double(items.at(i).size) * 100.0 / denom : 0.0;
+                rows.append(r);
+            }
+            if (compo) {
+                const qint64 other = total - sum;
+                if (other > 0) {
+                    Row r;
+                    r.name = tr("其他");
+                    r.sizeText = formatSize(other);
+                    r.pctValid = denom > 0;
+                    r.pct = denom > 0 ? double(other) * 100.0 / denom : 0.0;
+                    rows.append(r);
+                }
+            }
+        }
+    }
+
+    m_viewItems.clear();
+    // 🚨 重绘前必须 clearContents()（2026-10-10 修复「该日无显著增长」糊字 Bug）。
+    //
+    // 缺陷机制（已实测确认，见 tools/diskshot.cpp 的 A6 双向验证）：
+    // 本表对不同列用了**不同的填充方式** —— 名称/占比/操作列走 setCellWidget，
+    // 大小列与空态提示行走 setItem。而 Qt 允许 QTableWidgetItem 与 cellWidget
+    // 在同一格**共存，两者都会绘制**，且：
+    //   · setRowCount() 扩容不清旧格；
+    //   · setRowCount() 缩小只删多余行，**存活行的 cellWidget 保留**；
+    //   · setCellWidget() 不清同格已有的 item；
+    //   · clearContents() **不清 span**（空态合并过的格扩容后会一直合并）。
+    // 于是「增长视角空数据 → 切回排行」这类切换必然留下 item/widget 并存，
+    // 上一视角的文案（"该日无显著增长"）就叠在新一行的 ElidedLabel 上糊成一团。
+    // 清空责任只能落在渲染循环之前 —— 任何一列的填充动作都不会顺手清掉它。
+    m_analysisTable->clearContents();
+    m_analysisTable->setRowCount(rows.size());
+    m_analysisTable->clearSpans();
+    for (int i = 0; i < rows.size(); ++i) {
+        const Row &r = rows.at(i);
+        setPathCell(m_analysisTable, i, 0, r.path.isEmpty() ? r.name : r.path);
+        m_analysisTable->setItem(i, 1, new QTableWidgetItem(r.sizeText));
+        setShareCell(m_analysisTable, i, 2, r.pct, r.pctValid);
+        if (!r.path.isEmpty()) {
+            auto *btn = makeOpenButton(r.path);
+            const QString path = r.path;
+            connect(btn, &DIconButton::clicked, this,
+                    [this, path] { openInFileManager(path); });
+            m_analysisTable->setCellWidget(i, 3, btn);
+            m_viewItems.append(DiskItem{r.path, 0, r.isDir});
+        } else {
+            m_analysisTable->setItem(i, 3, new QTableWidgetItem());
+        }
+    }
+
+    if (rows.isEmpty()) {
+        // 空态提示合并整行：提示语是「一句话说明」，散在四格里会让人
+        // 以为第 1 列是空数据、第 3 列是空操作。
+        m_analysisTable->setSpan(0, 0, 1, 4);
+        m_analysisTable->setItem(0, 0, new QTableWidgetItem(emptyHint));
+    }
+
+    // 🚨 上下文条（返回按钮状态 + 面包屑 + 视角说明）必须跟着渲染一起刷新。
+    //
+    // 这里是三个视角**唯一**的渲染出口，所以把 updateContextBar() 挂在这里，
+    // 而不是散在各个调用点逐个补：
+    //   初始化（updateSummary）/ 下钻（onDrillFinished）/ 返回（onBackToSystemTimeline）
+    //   / 切视角（onViewModeChanged）/ 单击行（onAnalysisCellClicked）全部自动跟上。
+    // 漏在调用点的代价是**静默失效**：按钮灰着但也不报错，用户只会觉得"返回键坏了"。
+    updateContextBar();
+}
+
+// ---------- ④d 上下文条：返回按钮状态 + 面包屑 ----------
+void DiskUsagePage::updateContextBar()
+{
+    // 任一状态非"根+系统盘"即可返回：下钻层非空，或时间线正跟在某个目录上
+    const bool canBack = !m_rankFrames.isEmpty() || !m_timelineDir.isEmpty();
+    if (m_backRootBtn)
+        m_backRootBtn->setEnabled(canBack);
+    if (m_backUpBtn) {
+        const bool hasFrames = !m_rankFrames.isEmpty();
+        m_backUpBtn->setVisible(hasFrames);
+        m_backUpBtn->setEnabled(hasFrames);
+    }
+    if (m_viewHint)
+        m_viewHint->setText(viewHintFor(m_view));
+    rebuildBreadcrumb();
+}
+
+void DiskUsagePage::rebuildBreadcrumb()
+{
+    if (!m_crumbLay)
+        return;
+    while (QLayoutItem *item = m_crumbLay->takeAt(0)) {
+        if (QWidget *w = item->widget())
+            delete w;
+        delete item;
+    }
+
+    // 第 0 级「系统盘」：点击 = 返回系统盘（与左侧按钮同义，就近可达）
+    auto *rootBtn = new DPushButton(tr("系统盘"), m_crumbBox);
+    rootBtn->setFlat(true);
+    rootBtn->setIcon(DIconTheme::findQIcon(QStringLiteral("go-home")));
+    rootBtn->setIconSize(QSize(PanshiUi::Size::IconSmall, PanshiUi::Size::IconSmall));
+    rootBtn->setCursor(Qt::PointingHandCursor);
+    rootBtn->setAccessibleName(tr("返回系统盘"));
+    rootBtn->setToolTip(tr("返回系统盘时间线与顶层目录"));
+    connect(rootBtn, &DPushButton::clicked, this, &DiskUsagePage::onBackToSystemTimeline);
+    m_crumbLay->addWidget(rootBtn);
+
+    // 逐段展开当前浏览路径（/var/log → 系统盘 › var › log）
+    //
+    // 折叠规则：路径很深时（如 /media/Another/Date/…/build/.tmp/…）全展开会把
+    // 右侧「视角切换」挤出可视区 —— 每行控件都有最小宽度，横向挤不动就只能牺牲别人
+    // （项目教训：显式最小宽度是挤压唯一防线，但这里不能给面包屑留无限宽）。
+    // 所以只保留末 3 段，前面用「…」代替；祖先层仍可通过剩下的按钮回退。
+    const QStringList segs =
+        m_rankCurrentPath.split(QLatin1Char('/'), Qt::SkipEmptyParts);
+    const int keepTail = 3;
+    const int first = qMax(0, segs.size() - keepTail);
+    if (first > 0) {
+        auto *ellip = new DLabel(QStringLiteral("…"), m_crumbBox);
+        ellip->setForegroundRole(DPalette::TextTips);
+        ellip->setToolTip(m_rankCurrentPath);
+        m_crumbLay->addWidget(ellip);
+    }
+    for (int i = first; i < segs.size(); ++i) {
+        auto *sep = new DLabel(QStringLiteral("›"), m_crumbBox);
+        sep->setForegroundRole(DPalette::TextTips);
+        m_crumbLay->addWidget(sep);
+
+        auto *b = new DPushButton(segs.at(i), m_crumbBox);
+        b->setFlat(true);
+        b->setCursor(Qt::PointingHandCursor);
+        const bool last = (i == segs.size() - 1);
+        b->setEnabled(!last);   // 当前层本身不可点
+        b->setAccessibleName(last ? segs.at(i) : tr("回到 %1").arg(segs.at(i)));
+        if (!last)
+            b->setToolTip(tr("回到 %1").arg(segs.at(i)));
+        const int lvl = i + 1;
+        connect(b, &DPushButton::clicked, this, [this, lvl] { popBrowseTo(lvl); });
+        m_crumbLay->addWidget(b);
+    }
+    m_crumbLay->addStretch();
+}
+
+void DiskUsagePage::popBrowseTo(int level)
+{
+    while (m_rankFrames.size() > level) {
+        const auto frame = m_rankFrames.takeLast();
+        m_rankCurrentPath = frame.first;
+        m_rankItems = frame.second;
+    }
+    if (m_rankFrames.isEmpty()) {
+        m_rankCurrentPath.clear();
+        m_timelineDir.clear();   // 回到根 = 时间线恢复系统盘
+        m_rankItems = m_records.isEmpty() ? QList<DiskItem>() : m_records.last().topLevel;
+    } else {
+        m_timelineDir = m_rankCurrentPath;
+    }
+    updateTimelineSeries();
+    updateAnalysis();
+}
+
+// ---------- ④e 表格交互 ----------
+void DiskUsagePage::onViewModeChanged(int index)
+{
+    m_view = static_cast<ViewMode>(index);
+    syncViewBox();
+    updateAnalysis();
+}
+
+void DiskUsagePage::syncViewBox()
+{
+    if (!m_viewBox)
+        return;
+    const QList<QAbstractButton *> btns = m_viewBox->buttonList();
+    const int cur = static_cast<int>(m_view);
+    for (int i = 0; i < btns.size(); ++i)
+        btns.at(i)->setChecked(i == cur);
+}
+
+void DiskUsagePage::onAnalysisCellClicked(int row, int column)
+{
+    Q_UNUSED(column);
+    if (m_view == ViewMode::Growth && !m_timelineDir.isEmpty())
+        return;                  // 目录模式的两行是信息行，不参与切换
+    if (row < 0 || row >= m_viewItems.size())
+        return;
+    const DiskItem &it = m_viewItems.at(row);
+    if (!it.isDir)
+        return;
+    // 单击目录行 = 选中它，上方时间线随之切为该目录的占用变化
+    m_timelineDir = it.path;
+    updateTimelineSeries();
+    updateContextBar();
+}
+
+void DiskUsagePage::onAnalysisCellDoubleClicked(int row, int column)
+{
+    Q_UNUSED(column);
+    if (m_view == ViewMode::Growth)
+        return;                  // 增长口径不按下钻：进去就脱离「当日增量」了
+    if (row < 0 || row >= m_viewItems.size())
+        return;
+    const DiskItem &it = m_viewItems.at(row);
+    if (!it.isDir)
+        return;
+    if (m_scanner.isBusy())
+        return;
+    m_scanner.setAsRoot(true);
+    m_scanner.setRootPolicy(DiskScanner::RootPolicy::AllowPrompt);
+    showStatus(tr("正在读取 %1 的子目录…").arg(it.path));
+    m_scanner.drillInto(it.path);
+}
+
+void DiskUsagePage::onBreadcrumbJump(int level)
+{
+    popBrowseTo(level);
+}
+
+// ---------- ④a2 其它分区行列表（全盘视角） ----------
+void DiskUsagePage::rebuildOtherPartitions()
+{
+    if (!m_otherLay)
+        return;
+    // 清空旧行（无信号连接的行直接 delete；下钻按钮连接挂在页面 this 上，安全）
+    while (QLayoutItem *item = m_otherLay->takeAt(0)) {
+        if (QWidget *w = item->widget())
+            delete w;
+        delete item;
+    }
+
+    const QList<DiskMountInfo> parts = DiskScanner::listOtherPartitions();
+    if (parts.isEmpty()) {
+        auto *empty = Ui::rowDesc(tr("未检测到其它分区（单分区布局）"));
+        m_otherLay->addWidget(empty);
+        return;
+    }
+
+    for (const DiskMountInfo &p : parts) {
+        auto *row = new QWidget(m_otherLay->parentWidget());
+        auto *hl = new QHBoxLayout(row);
+        hl->setContentsMargins(0, 0, 0, 0);
+        hl->setSpacing(12);
+        auto *name = new Ui::ElidedLabel(p.mountPoint, row);
+        name->setToolTip(tr("%1 · %2 分区\n容量 %3 · 已用 %4")
+                             .arg(p.device, p.fsType, formatSize(p.capacity), formatSize(p.used)));
+        name->setAccessibleName(p.mountPoint);
+        hl->addWidget(name, 1);
+        auto *bar = new PanshiUi::PanshiFlatProgress(row);
+        bar->setRange(0, 1000);
+        bar->setFixedWidth(120);
+        bar->setFixedHeight(6);
+        bar->setValue(p.capacity > 0 ? int(qint64(p.used) * 1000 / p.capacity) : 0);
+        bar->setAccessibleName(p.mountPoint);
+        hl->addWidget(bar, 0, Qt::AlignVCenter);
+        const double pct = p.capacity > 0 ? double(p.used) * 100.0 / p.capacity : 0.0;
+        auto *val = new DLabel(QStringLiteral("%1 / %2 · %3%")
+                                   .arg(formatSizeCompact(p.used), formatSizeCompact(p.capacity),
+                                        QString::number(pct, 'f', 0)));
+        val->setForegroundRole(DPalette::TextTitle);
+        DFontSizeManager::instance()->bind(val, DFontSizeManager::T6);
+        val->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        // 固定宽避免数字位数变化时整行抖动
+        val->setFixedWidth(150);
+        hl->addWidget(val, 0, Qt::AlignVCenter);
+        // 下钻按钮：查看该分区内部构成（复用占用排行的 drill 流程）
+        auto *btn = new DIconButton(row);
+        btn->setIcon(DIconTheme::findQIcon(QStringLiteral("go-next")));
+        btn->setFixedSize(28, 28);
+        const QString label = tr("查看 %1 内部构成").arg(p.mountPoint);
+        btn->setToolTip(label);
+        btn->setAccessibleName(label);
+        btn->setCursor(Qt::PointingHandCursor);
+        const QString mp = p.mountPoint;
+        connect(btn, &DIconButton::clicked, this, [this, mp] { onDrillPartition(mp); });
+        hl->addWidget(btn, 0, Qt::AlignVCenter);
+        m_otherLay->addWidget(row);
+    }
+}
+
+// ---------- ④a3 其它分区下钻 ----------
+void DiskUsagePage::onDrillPartition(const QString &mountPoint)
+{
+    if (m_scanner.isBusy())
+        return;
+    // 分区内部构成用「排行」视角展示（原为切到占用排行标签）
+    m_view = ViewMode::Ranking;
+    syncViewBox();
+    m_scanner.setAsRoot(true);
+    m_scanner.setRootPolicy(DiskScanner::RootPolicy::AllowPrompt);
+    showStatus(tr("正在读取 %1 的子目录…").arg(mountPoint));
+    m_scanner.drillInto(mountPoint);
 }
 
 // ---------- ④ 独立设置窗口 ----------
 void DiskUsagePage::buildSettingsDialog()
 {
     m_settingsDlg = new DDialog(this);
+    PanshiUi::disableDialogTransparency(m_settingsDlg);   // 关闭 DTK 弹窗默认的模糊/透明效果
+    // 降为 WindowModal：设置对话框开着时主窗口仍可拖动
+    // （根因见 components.h::makeDialogNonBlockingWindowModal）
+    PanshiUi::makeDialogNonBlockingWindowModal(m_settingsDlg);
     m_settingsDlg->setTitle(tr("磁盘空间设置"));
     m_settingsDlg->setIcon(DIconTheme::findQIcon(QStringLiteral("preferences-system")));
 
@@ -735,7 +1434,7 @@ void DiskUsagePage::buildSettingsDialog()
         m_multiplierSpin->setValue(3.0);
         m_cooldownSpin = new DSpinBox;
         m_cooldownSpin->setRange(1, 72);
-        m_cooldownSpin->setSuffix(QStringLiteral(" 小时"));
+        m_cooldownSpin->setSuffix(tr(" 小时"));
         // 数值控件显式最小宽度：与 PanshiRow 的控件区下限配合，
         // 确保「当前值 + 后缀」在任何窗口宽度下都可读（不改各自的 sizeHint 逻辑）
         for (QWidget *w : {static_cast<QWidget *>(m_alertModeBox),
@@ -785,7 +1484,7 @@ void DiskUsagePage::buildSettingsDialog()
         auto *body = makeSection(tr("数据存储"));
         m_retentionSpin = new DSpinBox;
         m_retentionSpin->setRange(90, 730);
-        m_retentionSpin->setSuffix(QStringLiteral(" 天"));
+        m_retentionSpin->setSuffix(tr(" 天"));
         m_budgetBox = new DComboBox;
         m_budgetBox->addItems({QStringLiteral("256 MB"), QStringLiteral("512 MB"),
                                QStringLiteral("1024 MB")});
@@ -866,6 +1565,18 @@ void DiskUsagePage::onPreset(int days)
 {
     const QDate today = QDate::currentDate();
     requestRange(today.addDays(-(days - 1)), today);
+    // 高亮对应的范围分段（DButtonBox 手动互斥：选中当前项、取消其余）
+    if (m_rangeBox) {
+        const QList<QAbstractButton *> btns = m_rangeBox->buttonList();
+        int idx = -1;
+        if (days == 15) idx = 0;
+        else if (days == 30) idx = 1;
+        else if (days == 90) idx = 2;
+        else if (days == 180) idx = 3;
+        else if (days == 365) idx = 4;
+        for (int i = 0; i < btns.size(); ++i)
+            btns.at(i)->setChecked(i == idx);
+    }
 }
 
 void DiskUsagePage::onOpenCustomRange()
@@ -885,6 +1596,10 @@ void DiskUsagePage::onOpenCustomRange()
     //                否则设为终点。结束时统一 std::swap 保证 from <= to。
     // 这样「摘要」永远由同一份 from/to 状态派生，不会再出现分叉。
     DDialog dlg(this);
+    PanshiUi::disableDialogTransparency(&dlg);   // 关闭 DTK 弹窗默认的模糊/透明效果
+    // 降为 WindowModal：对话框开着时主窗口仍可拖动
+    // （根因见 components.h::makeDialogNonBlockingWindowModal）
+    PanshiUi::makeDialogNonBlockingWindowModal(&dlg);
     dlg.setTitle(tr("选择日期范围"));
     dlg.setIcon(DIconTheme::findQIcon(QStringLiteral("appointment-soon")));
 
@@ -976,6 +1691,13 @@ void DiskUsagePage::onOpenCustomRange()
     dlg.addButton(tr("确定"), true, DDialog::ButtonRecommend);
 
     const int ret = dlg.exec();
+    // 自定义区间不归属任何预设：无论确认还是取消，都取消所有分段高亮
+    // （点在「自定义」段上时它会被 DButtonBox 勾选，取消对话框必须一并撤销）
+    if (m_rangeBox) {
+        const QList<QAbstractButton *> btns = m_rangeBox->buttonList();
+        for (QAbstractButton *b : btns)
+            b->setChecked(false);
+    }
     if (ret != 1)
         return;
     // complete == false 表示用户只点了起点就确定 → from/to 已同值，视为单日区间
@@ -988,6 +1710,11 @@ void DiskUsagePage::onOpenCustomRange()
 
 void DiskUsagePage::onChartDateSelected(const QDate &d)
 {
+    // 点击数据点 = 想看这天涨在哪 → 自动切到「增长」视角
+    //（原为切到「增长详情」标签。视角切换在这里是"意图直译"，
+    //  否则用户点了图表只有下方表格变化，容易觉得"没反应"）
+    m_view = ViewMode::Growth;
+    syncViewBox();
     updateDayDetail(d);
 }
 
@@ -1021,8 +1748,8 @@ void DiskUsagePage::onRangeLoaded(quint64 id, const QList<DiskDayRecord> &record
         else
             updateDayDetail(m_records.last().date);
     } else {
-        m_detailTable->setRowCount(0);
         m_chart->setSelectedDate(QDate());
+        updateAnalysis();
     }
 }
 
@@ -1104,44 +1831,198 @@ void DiskUsagePage::updateOverview()
         m_overviewInfo->setText(tr("总容量 -- · 可用 --"));
     }
 
-    // 监控状态行
+    // 监控状态行：运行状态已由徽章（m_serviceBadge）承载，
+    // 这里只放采样参数 + 最近记录，不再用 ●/○ 字符重复表达状态
     QString status;
     if (m_config.enabled())
-        status = tr("● 监控中 · 每 %1 分钟采样一次 · 历史保留 %2 天")
+        status = tr("每 %1 分钟采样一次 · 历史保留 %2 天")
                      .arg(m_config.pollMinutes()).arg(m_config.retentionDays());
     else
-        status = tr("○ 监控未开启：开启后将自动建立基线并持续监控");
+        status = tr("开启后自动建立基线并持续监控");
     const DiskHistoryIndex idx = m_store.loadIndex();
     checkStep(tr("读取历史数据索引"));
     if (!idx.days.isEmpty()) {
         const DiskDaySummary &last = idx.days.last();
-        status += tr("\n最近记录 %1 · 该日增长 %2")
+        status += tr(" · 最近记录 %1 · 该日增长 %2")
                       .arg(last.date.toString(QStringLiteral("yyyy-MM-dd")),
                            formatSize(last.growth));
     }
     m_monitorStatus->setText(status);
 
-    // 告警横幅（alert.json 最近一条）
+    refreshAlert();
+}
+
+// ----------------------------------------------------------------------
+// 告警：横幅展示 + 手动关闭 + 历史回看
+// ----------------------------------------------------------------------
+QString DiskUsagePage::alertKey(const QString &date, const QString &dir)
+{
+    return date + QStringLiteral("|") + dir;
+}
+
+QJsonArray DiskUsagePage::loadAlertSpikes()
+{
     QFile f(DiskHistoryStore::historyDir() + QStringLiteral("/alert.json"));
-    if (f.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-        const QJsonArray spikes = doc.object().value(QStringLiteral("spikes")).toArray();
-        if (!spikes.isEmpty()) {
-            const QJsonObject last = spikes.last().toObject();
-            // 文案不再自带「⚠」符号 —— 语义由 Banner 的图标承载（WCAG 1.4.1：
-            // 不依赖字符/颜色传递信息，图标 + 柔和底 + 中性正文承担语义）
-            m_alertBanner->setSemantic(PanshiUi::Semantic::Danger);
-            m_alertBanner->setText(tr("%1 · %2 增长 %3")
-                                       .arg(last.value(QStringLiteral("date")).toString(),
-                                            last.value(QStringLiteral("causeDir")).toString(),
-                                            formatSize(static_cast<qint64>(
-                                                last.value(QStringLiteral("growth")).toDouble(0)))));
-            m_alertBanner->show();
-        } else {
-            m_alertBanner->hide();
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject())
+        return {};
+    return doc.object().value(QStringLiteral("spikes")).toArray();
+}
+
+QList<DiskUsagePage::AlertEntry> DiskUsagePage::alertHistory() const
+{
+    QList<AlertEntry> out;
+    const QJsonArray spikes = loadAlertSpikes();
+    for (int i = spikes.size() - 1; i >= 0; --i) {   // 新 → 旧
+        const QJsonObject o = spikes.at(i).toObject();
+        AlertEntry e;
+        e.date = o.value(QStringLiteral("date")).toString();
+        e.dir = o.value(QStringLiteral("causeDir")).toString();
+        e.growth = formatSize(
+            static_cast<qint64>(o.value(QStringLiteral("growth")).toDouble(0)));
+        out.append(e);
+    }
+    return out;
+}
+
+void DiskUsagePage::refreshAlert()
+{
+    if (!m_alertBanner)
+        return;
+    const QJsonArray spikes = loadAlertSpikes();
+    for (int i = spikes.size() - 1; i >= 0; --i) {
+        const QJsonObject o = spikes.at(i).toObject();
+        const QString date = o.value(QStringLiteral("date")).toString();
+        const QString dir = o.value(QStringLiteral("causeDir")).toString();
+        if (m_dismissedAlerts.contains(alertKey(date, dir)))
+            continue;    // 用户关过 → 不再自动弹出（历史里仍可见）
+        // 文案不带「⚠」符号 —— 语义由 Banner 图标承载（WCAG 1.4.1）
+        m_alertBanner->setSemantic(PanshiUi::Semantic::Danger);
+        m_alertBanner->setText(tr("%1 · %2 增长 %3")
+                                   .arg(date, dir,
+                                        formatSize(static_cast<qint64>(
+                                            o.value(QStringLiteral("growth")).toDouble(0)))));
+        m_alertBanner->setClosable(true);
+        m_alertBanner->show();
+        m_currentAlertKey = alertKey(date, dir);
+        updateAlertHistoryBtn();
+        return;
+    }
+    // 没有"未关闭"的告警 → 收起。
+    // ⚠️ 走 setText(空) 的自动隐藏路径，不发 dismissed —— 否则自动收起
+    //    会被误记成"用户关掉的"，历史里的"新增"计数就乱了。
+    m_currentAlertKey.clear();
+    m_alertBanner->setText(QString());
+    updateAlertHistoryBtn();
+}
+
+void DiskUsagePage::updateAlertHistoryBtn()
+{
+    if (!m_alertHistoryBtn)
+        return;
+    const int total = loadAlertSpikes().size();
+    const int fresh = qMax(0, total - m_alertSeenCount);
+    m_alertHistoryBtn->setText(fresh > 0 ? tr("告警历史（%1 条新增）").arg(fresh)
+                                          : tr("告警历史（%1）").arg(total));
+    m_alertHistoryBtn->setEnabled(total > 0);
+}
+
+void DiskUsagePage::onDismissAlert()
+{
+    if (m_currentAlertKey.isEmpty())
+        return;
+    if (!m_dismissedAlerts.contains(m_currentAlertKey))
+        m_dismissedAlerts.append(m_currentAlertKey);
+    // 上限保护：与 spikes（≤200）同量级即可，超出丢弃最旧的
+    while (m_dismissedAlerts.size() > 200)
+        m_dismissedAlerts.removeFirst();
+    saveAlertUiState();
+    m_currentAlertKey.clear();
+    showStatus(tr("告警已关闭，可随时在「告警历史」中查看"));
+    updateAlertHistoryBtn();
+}
+
+void DiskUsagePage::loadAlertUiState()
+{
+    QFile f(DiskHistoryStore::historyDir() + QStringLiteral("/alert-ui-state.json"));
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject())
+        return;
+    const QJsonObject o = doc.object();
+    m_dismissedAlerts.clear();
+    for (const QJsonValue &v : o.value(QStringLiteral("dismissed")).toArray())
+        m_dismissedAlerts.append(v.toString());
+    m_alertSeenCount = static_cast<int>(o.value(QStringLiteral("seen")).toDouble(0));
+}
+
+void DiskUsagePage::saveAlertUiState() const
+{
+    QJsonArray arr;
+    for (const QString &k : m_dismissedAlerts)
+        arr.append(k);
+    QJsonObject o;
+    o.insert(QStringLiteral("dismissed"), arr);
+    o.insert(QStringLiteral("seen"), m_alertSeenCount);
+    QFile f(DiskHistoryStore::historyDir() + QStringLiteral("/alert-ui-state.json"));
+    if (!f.open(QIODevice::WriteOnly))
+        return;
+    f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
+}
+
+void DiskUsagePage::onOpenAlertHistory()
+{
+    const QList<AlertEntry> entries = alertHistory();
+
+    DDialog dlg(this);
+    PanshiUi::disableDialogTransparency(&dlg);
+    // 降为 WindowModal：历史弹窗开着时主窗口仍可拖动（同设置窗口口径）
+    PanshiUi::makeDialogNonBlockingWindowModal(&dlg);
+    dlg.setTitle(tr("告警历史"));
+    dlg.setIcon(DIconTheme::findQIcon(QStringLiteral("dialog-warning")));
+
+    auto *sec = new PanshiUi::PanshiSection(
+        tr("历史告警"),
+        entries.isEmpty() ? tr("暂无告警记录")
+                          : tr("按时间倒序；手动关闭过的告警仍保留在此"));
+
+    QStringList lines;
+    lines.reserve(entries.size());
+    for (const AlertEntry &e : entries)
+        lines.append(tr("%1 · %2 · 增长 %3").arg(e.date, e.dir, e.growth));
+
+    auto *model = new QStringListModel(sec);
+    model->setStringList(lines);
+    auto *view = new DListView(sec);
+    view->setModel(model);
+    view->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    view->setMinimumHeight(240);
+    sec->content()->addWidget(view);
+
+    dlg.addContent(sec);
+    dlg.addButton(tr("关闭"), false, DDialog::ButtonNormal);
+    dlg.addButton(tr("清空历史"), false, DDialog::ButtonWarning);
+
+    // 打开即视为已读：清掉按钮上的"新增"角标
+    m_alertSeenCount = entries.size();
+    saveAlertUiState();
+    updateAlertHistoryBtn();
+
+    if (dlg.exec() == 1) {   // 1 = 「清空历史」
+        if (Ui::confirmDialog(this, tr("清空告警历史"),
+                              tr("将删除全部告警记录，且不可恢复。确定继续？"),
+                              tr("清空"), true)) {
+            const QString dir = DiskHistoryStore::historyDir();
+            QFile::remove(dir + QStringLiteral("/alert.json"));
+            QFile::remove(dir + QStringLiteral("/alert-ui-state.json"));
+            m_dismissedAlerts.clear();
+            m_alertSeenCount = 0;
+            m_currentAlertKey.clear();
+            refreshAlert();
         }
-    } else {
-        m_alertBanner->hide();
     }
 }
 
@@ -1286,157 +2167,112 @@ void DiskUsagePage::onStartMonitorService()
 void DiskUsagePage::updateSummary()
 {
     const DiskRangeStats st = DiskHistoryStore::computeRangeStats(m_records);
-    m_sumNet->setValue(formatSize(st.netGrowth), PanshiUi::Semantic::Accent);
-    m_sumDaily->setValue(formatSize(st.dailyAvg), PanshiUi::Semantic::Accent);
-    // 最大单日：有值才上 Warning；无数据时用 Muted —— 空格子不该带"需留意"的语义
-    if (st.maxDay.isValid()) {
-        m_sumMax->setValue(tr("%1（%2）").arg(formatSize(st.maxDayGrowth),
-                                              st.maxDay.toString(QStringLiteral("yyyy-MM-dd"))),
-                           PanshiUi::Semantic::Warning);
+    const bool hasData = !m_records.isEmpty();
+
+    // ---- 区间陈述：给下面的数字补上主语（哪一段 · 多长 · 多少条）----
+    m_sumRangeLabel->setText(
+        (m_from.isValid() && m_to.isValid())
+            ? tr("%1 ~ %2 · %3 天 · %4 条记录")
+                  .arg(m_from.toString(QStringLiteral("yyyy-MM-dd")),
+                       m_to.toString(QStringLiteral("yyyy-MM-dd")))
+                  .arg(m_from.daysTo(m_to) + 1)
+                  .arg(m_records.size())
+            : QString());
+
+    // ---- 主角：净增长 ----
+    m_sumNet->setText(hasData ? formatSize(st.netGrowth) : QStringLiteral("-"));
+    // 无数据时不用强调色——Accent 会把「没有数据」渲染成一个结论
+    PanshiUi::applySemantic(m_sumNet,
+                            hasData ? PanshiUi::Semantic::Accent : PanshiUi::Semantic::Muted);
+    // 副说明：起始 → 结束。让「涨了多少」有参照系，否则孤立的大数字没有落点。
+    m_sumBeginEnd->setText(hasData ? tr("区间起始 %1 → 结束 %2")
+                                        .arg(formatSize(st.beginUsed), formatSize(st.endUsed))
+                                   : tr("所选范围内暂无监控数据"));
+
+    // ---- 次要指标：统一单行，日期退为备注 ----
+    m_sumDaily->setText(hasData ? formatSize(st.dailyAvg) : QStringLiteral("-"));
+    const bool hasMax = hasData && st.maxDay.isValid();
+    m_sumMax->setText(hasMax ? formatSize(st.maxDayGrowth) : QStringLiteral("-"));
+    PanshiUi::applySemantic(m_sumMax, hasMax ? PanshiUi::Semantic::Warning
+                                             : PanshiUi::Semantic::Muted);
+    // 备注为空时必须隐藏（hide 而非留空文本）—— 否则该行仍占一列宽度，
+    // 与上方没有备注的行右边缘对不齐。
+    m_sumMaxDay->setVisible(hasMax);
+    m_sumMaxDay->setText(hasMax ? st.maxDay.toString(QStringLiteral("yyyy-MM-dd")) : QString());
+    m_sumTrend->setText(st.trendStart.isValid()
+                            ? st.trendStart.toString(QStringLiteral("yyyy-MM-dd"))
+                            : tr("无连续增长"));
+
+    // ---- 容量预测（英雄区右栏）----
+    // 三段式与左栏同构：标签 → 主体 → 备注。原整句文案「按当前增速约 N 天后写满
+    // （约 YYYY-MM-DD）」塞进单行 Banner，日期被降级进括号里；拆成
+    // 「约 107 天」+「按当前增速写满 · 2027-01-25」后，落点是同一个具体日期。
+    if (hasData && st.etaDays > 0) {
+        m_fcValue->setText(tr("约 %1 天后写满").arg(st.etaDays));
+        // 主体是「剩多少时间」，越少越该被看见 → Warning
+        m_fcSemantic = PanshiUi::Semantic::Warning;
+        m_fcNote->setText(tr("按当前增速 · 预计 %1")
+                              .arg(QDate::currentDate().addDays(st.etaDays)
+                                       .toString(QStringLiteral("yyyy-MM-dd"))));
+    } else if (hasData) {
+        m_fcValue->setText(tr("暂无风险"));
+        m_fcSemantic = PanshiUi::Semantic::Accent;
+        m_fcNote->setText(tr("增长已趋稳，短期不会写满"));
     } else {
-        m_sumMax->setValue(QStringLiteral("-"), PanshiUi::Semantic::Muted);
+        m_fcValue->setText(QStringLiteral("-"));
+        m_fcSemantic = PanshiUi::Semantic::Muted;
+        m_fcNote->setText(tr("暂无数据，无法预测"));
     }
-    m_sumTrend->setValue(st.trendStart.isValid()
-                             ? st.trendStart.toString(QStringLiteral("yyyy-MM-dd"))
-                             : tr("无连续增长"),
-                         PanshiUi::Semantic::Accent);
-    // 容量预测：语义随内容变化 —— 有明确写满日期时 Warning，增速趋稳时 Accent
-    if (st.etaDays > 0) {
-        m_sumEtaBar->setSemantic(PanshiUi::Semantic::Warning);
-        m_sumEtaBar->setText(tr("按当前增速约 %1 天后写满").arg(st.etaDays));
-    } else {
-        m_sumEtaBar->setSemantic(PanshiUi::Semantic::Accent);
-        m_sumEtaBar->setText(tr("增长趋稳，暂无容量风险"));
-    }
-    QString top;
-    for (const DiskItem &it : st.topGrowItems)
-        top += QStringLiteral("· %1  %2\n").arg(it.path, formatSize(it.size));
-    m_sumTop->setText(top.trimmed().isEmpty() ? tr("区间内无明显增长") : top.trimmed());
+    // 颜色走 applyExactColor 登记簿（切主题自动刷新），图标是快照需重查
+    PanshiUi::applySemantic(m_fcValue, m_fcSemantic);
+    updateForecastIcon();
+    updateHeroLayout();
+    // 磁盘分析区：构成 / 增长 / 排行 三视角共用一张表（整合后唯一渲染入口）
+    updateAnalysis();
+    // 其它分区：df 数据即时刷新（全盘视角，不依赖扫描记录）
+    rebuildOtherPartitions();
 }
 
 void DiskUsagePage::updateDayDetail(const QDate &d)
 {
-    // 无障碍收尾挂作用域守卫：本函数 4 条 return 出口，统一在析构时补
-    const A11yOnScopeExit a11y{m_detailTable};
+    // 只负责"选中哪一天"，渲染统一交给 updateAnalysis()：
+    // 三个视角共用一张表，日期只会影响「增长」视角的取数。
     m_selected = d;
     m_chart->setSelectedDate(d);
-    m_detailTable->setRowCount(0);
-    m_detailItems.clear();
-
-    // 目录时间线模式：显示该目录在所选日的大小与环比变化
-    if (!m_timelineDir.isEmpty()) {
-        int idx = -1;
-        for (int i = 0; i < m_records.size(); ++i) {
-            if (m_records.at(i).date == d) {
-                idx = i;
-                break;
-            }
-        }
-        if (idx < 0) {
-            m_detailTable->setRowCount(1);
-            m_detailTable->setItem(0, 0, new QTableWidgetItem(tr("所选日期不在当前加载范围内")));
-            return;
-        }
-        const qint64 cur = dirSizeInRecord(m_records.at(idx), m_timelineDir);
-        const qint64 prev = idx > 0 ? dirSizeInRecord(m_records.at(idx - 1), m_timelineDir) : -1;
-        m_detailTable->setRowCount(2);
-        m_detailTable->setItem(0, 0, new QTableWidgetItem(tr("目录 %1").arg(m_timelineDir)));
-        m_detailTable->setItem(0, 1, new QTableWidgetItem(cur >= 0 ? formatSize(cur) : tr("无数据")));
-        m_detailTable->setItem(0, 2, new QTableWidgetItem());
-        if (prev >= 0 && cur >= 0) {
-            const qint64 diff = cur - prev;
-            m_detailTable->setItem(1, 0, new QTableWidgetItem(tr("较前一日变化")));
-            m_detailTable->setItem(1, 1, new QTableWidgetItem((diff >= 0 ? QStringLiteral("+") : QString()) + formatSize(diff)));
-        } else {
-            m_detailTable->setItem(1, 0, new QTableWidgetItem(tr("前一日暂无数据")));
-        }
-        m_detailTable->setItem(1, 2, new QTableWidgetItem());
-        return;
-    }
-
-    int idx = -1;
-    for (int i = 0; i < m_records.size(); ++i) {
-        if (m_records.at(i).date == d) {
-            idx = i;
-            break;
-        }
-    }
-    if (idx < 0) {
-        m_detailTable->setRowCount(1);
-        m_detailTable->setItem(0, 0, new QTableWidgetItem(tr("所选日期不在当前加载范围内")));
-        return;
-    }
-    DiskDayRecord prev;
-    if (idx > 0)
-        prev = m_records.at(idx - 1);
-    const QList<DiskItem> items = DiskHistoryStore::topGrowthItems(prev, m_records.at(idx), 8);
-    if (items.isEmpty()) {
-        m_detailTable->setRowCount(1);
-        m_detailTable->setItem(0, 0, new QTableWidgetItem(tr("该日无显著增长")));
-        return;
-    }
-    m_detailItems = items;
-    m_detailTable->setRowCount(items.size());
-    for (int i = 0; i < items.size(); ++i) {
-        const DiskItem &it = items.at(i);
-        setPathCell(m_detailTable, i, 0, it.path);
-        m_detailTable->setItem(i, 1, new QTableWidgetItem(formatSize(it.size)));
-        auto *btn = makeOpenButton(it.path);
-        const QString path = it.path;
-        connect(btn, &DIconButton::clicked, this, [this, path] { openInFileManager(path); });
-        m_detailTable->setCellWidget(i, 2, btn);
-    }
+    updateAnalysis();
 }
 
 void DiskUsagePage::loadRanking()
 {
-    // 同 updateDayDetail：空数据占位那条 early return 也得补无障碍，用守卫兜住
-    const A11yOnScopeExit a11y{m_rankTable};
-    DiskDayRecord latest;
-    if (!m_records.isEmpty()) {
-        latest = m_records.last();
-    } else {
-        const DiskHistoryIndex idx = m_store.loadIndex();
-        if (!idx.days.isEmpty()) {
-            DiskDayRecord r;
-            if (m_store.loadDay(idx.days.last().date, &r))
-                latest = r;
+    // 背景刷新（历史目录变化 / 监控采样 / 扫描完成）都会走到这里。
+    //
+    // 🚨 旧实现无条件"回到根"：清空下钻栈 + 清空时间线目录。后果是用户正看着
+    //    /var/log 时后台一刷新就被弹回系统盘 —— 浏览位置被静默丢弃，且没有任何
+    //    提示，用户只会觉得"这个软件老自己跳"。
+    //
+    //    但实际上**历史数据变化并不会让下钻视图失效**：分析表在下钻态显示的
+    //    是当前目录的子项，来自**按需 du**（m_rankItems），不是历史记录。
+    //    所以正确的语义是"根态下刷新顶层子项；下钻态原样保留"，
+    //    真正的回根只由「返回系统盘 / 面包屑根 / 切换时间范围」显式触发。
+    if (m_rankCurrentPath.isEmpty()) {
+        DiskDayRecord latest;
+        if (!m_records.isEmpty()) {
+            latest = m_records.last();
+        } else {
+            const DiskHistoryIndex idx = m_store.loadIndex();
+            if (!idx.days.isEmpty()) {
+                DiskDayRecord r;
+                if (m_store.loadDay(idx.days.last().date, &r))
+                    latest = r;
+            }
         }
-    }
-    m_rankFrames.clear();
-    m_rankCurrentPath.clear();
-    m_rankBackBtn->hide();
-    m_rankPath->setText(QStringLiteral("/"));
-    m_timelineDir.clear();   // 排行回到根 → 时间线恢复系统盘
-
-    m_rankTable->setRowCount(0);
-    if (latest.topLevel.isEmpty()) {
-        m_rankTable->setRowCount(1);
-        m_rankTable->setItem(0, 0, new QTableWidgetItem(tr("暂无数据：请开启监控或点击“立即扫描”")));
-        updateTimelineSeries();
-        return;
-    }
-    m_rankItems = latest.topLevel;
-    std::sort(m_rankItems.begin(), m_rankItems.end(),
-              [](const DiskItem &a, const DiskItem &b) { return a.size > b.size; });
-    const qint64 base = latest.total;
-    m_rankTable->setRowCount(0);
-    const int n = qMin(m_rankItems.size(), 200);
-    m_rankTable->setRowCount(n);
-    for (int i = 0; i < n; ++i) {
-        const DiskItem &it = m_rankItems.at(i);
-        setPathCell(m_rankTable, i, 0, it.path);
-        m_rankTable->setItem(i, 1, new QTableWidgetItem(formatSize(it.size)));
-        const double pct = base > 0 ? double(it.size) * 100.0 / base : 0.0;
-        m_rankTable->setItem(i, 2, new QTableWidgetItem(QString::number(pct, 'f', 1) + QStringLiteral("%")));
-        auto *btn = makeOpenButton(it.path);
-        const QString path = it.path;
-        connect(btn, &DIconButton::clicked, this, [this, path] { openInFileManager(path); });
-        m_rankTable->setCellWidget(i, 3, btn);
+        m_rankItems = latest.topLevel;
+        std::sort(m_rankItems.begin(), m_rankItems.end(),
+                  [](const DiskItem &a, const DiskItem &b) { return a.size > b.size; });
     }
     updateTimelineSeries();
+    updateAnalysis();
 }
-
 // ----------------------------------------------------------------------
 // 时间线序列：系统盘占用 / 指定目录占用
 // ----------------------------------------------------------------------
@@ -1464,28 +2300,19 @@ void DiskUsagePage::updateTimelineSeries()
         // 补齐花括号：原实现缺花括号，使 `m_backTimelineBtn->hide()` 成为
         // if 语句体的一部分（缩进误导读者以为它在 if 之外）。行为虽恰好正确，
         // 但「看起来在 if 内、实际也在 if 内」这种巧合一旦后续有人加语句就会出错。
-        if (m_timelineDir.isEmpty()) {
-            m_timelineHint->setText(tr("当前显示：系统盘占用"));
-            if (m_backTimelineBtn)
-                m_backTimelineBtn->hide();
-        } else {
-            m_timelineHint->setText(tr("目录“%1”暂无逐日数据，请先开启监控或在该目录下钻").arg(m_timelineDir));
-            if (m_backTimelineBtn)
-                m_backTimelineBtn->show();
-        }
+        m_timelineHint->setText(
+            m_timelineDir.isEmpty()
+                ? tr("当前显示：系统盘占用")
+                : tr("目录“%1”暂无逐日数据，请先开启监控或在该目录下钻").arg(m_timelineDir));
         return;
     }
 
     if (m_timelineDir.isEmpty()) {
         m_timelineHint->setText(tr("当前显示：系统盘占用变化"));
-        if (m_backTimelineBtn)
-            m_backTimelineBtn->hide();
         rebuildSpikeSet();
         m_chart->setSpikeDays(m_spikeSet);
     } else {
         m_timelineHint->setText(tr("当前显示：目录 %1 的占用变化").arg(m_timelineDir));
-        if (m_backTimelineBtn)
-            m_backTimelineBtn->show();
         m_chart->setSpikeDays({});   // 目录模式不标系统盘飙升日
     }
     m_chart->setRecords(series);
@@ -1626,6 +2453,10 @@ void DiskUsagePage::onRemoveExclude()
 void DiskUsagePage::onClearHistory()
 {
     DDialog dlg(this);
+    PanshiUi::disableDialogTransparency(&dlg);   // 关闭 DTK 弹窗默认的模糊/透明效果
+    // 降为 WindowModal：确认框开着时主窗口仍可拖动
+    // （根因见 components.h::makeDialogNonBlockingWindowModal）
+    PanshiUi::makeDialogNonBlockingWindowModal(&dlg);
     dlg.setIcon(QIcon::fromTheme(QStringLiteral("dialog-warning")));
     dlg.setTitle(tr("清除全部监控数据"));
     dlg.setMessage(tr("将删除所有历史占用记录与告警，且不可恢复。确定继续？"));
@@ -1635,10 +2466,15 @@ void DiskUsagePage::onClearHistory()
         return;
     const QDate today = QDate::currentDate();
     m_store.removeRange(QDate(2000, 1, 1), today.addDays(1));
-    QFile::remove(DiskHistoryStore::historyDir() + QStringLiteral("/alert.json"));
+    const QString dir = DiskHistoryStore::historyDir();
+    QFile::remove(dir + QStringLiteral("/alert.json"));
+    QFile::remove(dir + QStringLiteral("/alert-ui-state.json"));
     m_records.clear();
     m_selected = QDate();
-    m_alertBanner->hide();
+    m_dismissedAlerts.clear();
+    m_alertSeenCount = 0;
+    m_currentAlertKey.clear();
+    refreshAlert();
     refresh();
 }
 
@@ -1676,123 +2512,26 @@ void DiskUsagePage::onScanFinished(bool ok, const QString &err)
 
 void DiskUsagePage::onDrillFinished(const QString &dir, const QList<DiskItem> &items)
 {
-    // 记录当前帧
-    DiskItem parent;
-    parent.path = dir;
+    // 下钻一帧进栈：保存进入前的路径与子项，供「返回上级 / 面包屑」逐级回退
     m_rankFrames.append(qMakePair(m_rankCurrentPath, m_rankItems));
     m_rankCurrentPath = dir;
     m_rankItems = items;
     std::sort(m_rankItems.begin(), m_rankItems.end(),
               [](const DiskItem &a, const DiskItem &b) { return a.size > b.size; });
-    m_rankBackBtn->show();
-    m_rankPath->setText(dir);
-    m_timelineDir = dir;
+    m_timelineDir = dir;      // 时间线跟随进入的目录
     updateTimelineSeries();
-    m_rankTable->setRowCount(0);
-    const int n = qMin(m_rankItems.size(), 200);
-    m_rankTable->setRowCount(n);
-    const qint64 base = m_records.isEmpty() ? 0 : m_records.last().total;
-    for (int i = 0; i < n; ++i) {
-        const DiskItem &it = m_rankItems.at(i);
-        setPathCell(m_rankTable, i, 0, it.path);
-        m_rankTable->setItem(i, 1, new QTableWidgetItem(formatSize(it.size)));
-        const double pct = base > 0 ? double(it.size) * 100.0 / base : 0.0;
-        m_rankTable->setItem(i, 2, new QTableWidgetItem(QString::number(pct, 'f', 1) + QStringLiteral("%")));
-        auto *btn = makeOpenButton(it.path);
-        const QString path = it.path;
-        connect(btn, &DIconButton::clicked, this, [this, path] { openInFileManager(path); });
-        m_rankTable->setCellWidget(i, 3, btn);
-    }
-    PanshiUi::finalizeTableAccessible(m_rankTable);
+    updateAnalysis();         // 表格按当前视角重渲染（构成 / 排行取新子项）
 }
 
 void DiskUsagePage::onBackToSystemTimeline()
 {
-    // 从目录时间线一键返回系统盘时间线
+    // 一键回到根：时间线恢复系统盘 + 列表回到顶层 + 清空下钻栈
     m_timelineDir.clear();
+    m_rankCurrentPath.clear();
+    m_rankFrames.clear();
+    m_rankItems = m_records.isEmpty() ? QList<DiskItem>() : m_records.last().topLevel;
     updateTimelineSeries();
-    if (m_selected.isValid())
-        updateDayDetail(m_selected);   // 详情表恢复系统盘增长详情
-}
-
-void DiskUsagePage::onDetailCellClicked(int row, int column)
-{
-    Q_UNUSED(column);
-    if (!m_timelineDir.isEmpty())
-        return;                       // 目录模式下两行是信息行，不切换
-    if (row < 0 || row >= m_detailItems.size())
-        return;
-    const DiskItem &it = m_detailItems.at(row);
-    if (!it.isDir)
-        return;
-    // 与占用排行一致：点击目录行 → 上方时间线切换为该目录的占用变化
-    m_timelineDir = it.path;
-    updateTimelineSeries();
-    if (m_selected.isValid())
-        updateDayDetail(m_selected);  // 详情表同步显示该目录当日变化
-}
-
-void DiskUsagePage::onRankCellClicked(int row, int column)
-{
-    Q_UNUSED(column);
-    if (row < 0 || row >= m_rankItems.size())
-        return;
-    const DiskItem &it = m_rankItems.at(row);
-    if (!it.isDir)
-        return;
-    // 单击选择目录：上方时间线切换为该目录的占用变化
-    m_timelineDir = it.path;
-    updateTimelineSeries();
-}
-
-void DiskUsagePage::onRankCellDoubleClicked(int row, int column)
-{
-    Q_UNUSED(column);
-    if (row < 0 || row >= m_rankItems.size())
-        return;
-    const DiskItem &it = m_rankItems.at(row);
-    if (!it.isDir)
-        return;
-    if (m_scanner.isBusy())
-        return;
-    m_scanner.setAsRoot(true);
-    m_scanner.setRootPolicy(DiskScanner::RootPolicy::AllowPrompt);
-    showStatus(tr("正在读取 %1 的子目录…").arg(it.path));
-    m_scanner.drillInto(it.path);
-}
-
-void DiskUsagePage::onRankBack()
-{
-    if (m_rankFrames.isEmpty())
-        return;
-    const auto frame = m_rankFrames.takeLast();
-    m_rankCurrentPath = frame.first;
-    m_rankItems = frame.second;
-    if (m_rankFrames.isEmpty()) {
-        m_rankBackBtn->hide();
-        m_rankPath->setText(QStringLiteral("/"));
-        m_timelineDir.clear();
-    } else {
-        m_rankPath->setText(m_rankCurrentPath);
-        m_timelineDir = m_rankCurrentPath;
-    }
-    updateTimelineSeries();
-    m_rankTable->setRowCount(0);
-    const int n = qMin(m_rankItems.size(), 200);
-    m_rankTable->setRowCount(n);
-    const qint64 base = m_records.isEmpty() ? 0 : m_records.last().total;
-    for (int i = 0; i < n; ++i) {
-        const DiskItem &it = m_rankItems.at(i);
-        setPathCell(m_rankTable, i, 0, it.path);
-        m_rankTable->setItem(i, 1, new QTableWidgetItem(formatSize(it.size)));
-        const double pct = base > 0 ? double(it.size) * 100.0 / base : 0.0;
-        m_rankTable->setItem(i, 2, new QTableWidgetItem(QString::number(pct, 'f', 1) + QStringLiteral("%")));
-        auto *btn = makeOpenButton(it.path);
-        const QString path = it.path;
-        connect(btn, &DIconButton::clicked, this, [this, path] { openInFileManager(path); });
-        m_rankTable->setCellWidget(i, 3, btn);
-    }
-    PanshiUi::finalizeTableAccessible(m_rankTable);
+    updateAnalysis();
 }
 
 // ----------------------------------------------------------------------
@@ -1843,6 +2582,10 @@ void DiskUsagePage::onThemeChanged()
 {
     if (m_chart)
         m_chart->update();
+    // 图标是**快照**（QLabel::setPixmap 之后 QIcon 换主题也不会影响已画的图，
+    // 见 common.h::iconBadge 注释）→ 切主题必须重查一次，否则容量预测图标
+    // 会一直停在浅色主题那一版。
+    updateForecastIcon();
     updateOverview();
     // ⚠️ 自绘组件在调色板替换后未必自动重绘 —— 显式刷一次整页。
     // 2026-10-03 用户反馈「切换暗色时有时不会变」：本页的自绘卡片
@@ -1850,6 +2593,26 @@ void DiskUsagePage::onThemeChanged()
     // 实时取 appPalette()，取色逻辑本身是对的）**没有收到重绘通知**，
     // 于是仍显示旧主题的像素。整页 update() 让它们重走 paintEvent。
     update();
+}
+
+/** 按 m_fcSemantic 重设容量预测图标（无风险态用空 pixmap 留白） */
+void DiskUsagePage::updateForecastIcon()
+{
+    if (!m_fcIcon)
+        return;
+    const QSize isz(PanshiUi::Size::IconSmall, PanshiUi::Size::IconSmall);
+    if (m_fcSemantic == PanshiUi::Semantic::Warning) {
+        m_fcIcon->setPixmap(Ui::themedIcon(QStringLiteral("warning"),
+                                           QStyle::SP_MessageBoxWarning)
+                                .pixmap(isz));
+    } else if (m_fcSemantic == PanshiUi::Semantic::Accent) {
+        m_fcIcon->setPixmap(Ui::themedIcon(QStringLiteral("dialog-information"),
+                                           QStyle::SP_MessageBoxInformation)
+                                .pixmap(isz));
+    } else {
+        // 无数据态不画图标，但保留占位尺寸（否则标签行会左移，切换时标题跳动）
+        m_fcIcon->setPixmap(QPixmap(isz));
+    }
 }
 
 void DiskUsagePage::onPaletteChanged()

@@ -1,3 +1,47 @@
+panshi-manager (1.0.6) unstable; urgency=medium
+
+  * 修复「关于」页版本号长期不更新：界面一直显示 1.0.0，而实际安装包已到
+    1.0.5。根因是版本号在 CMakeLists.txt、main.cpp、aboutpage.cpp（两处）
+    与 aboutdialog.cpp 里各写了一份字面量，发版只改 deb 版本号时界面不会跟着变。
+    现统一为单一来源：CMakeLists.txt 的 project(VERSION) 经编译期宏
+    PANSHI_VERSION 下发，main.cpp 用它调用 setApplicationVersion()，
+    「关于」页 / 自绘关于对话框 / 复制版本信息 / 后台监控进程一律读
+    applicationVersion()，源串只保留 %1 占位符，C++ 里不再出现版本字面量。
+  * tools/build-deb.sh 增加版本一致性校验：debian/changelog 与 CMakeLists.txt
+    的 project(VERSION) 不一致时直接中止打包，防止包版本与界面版本再次漂移。
+  * 翻译同步：版本串改为占位符形式，中英文 .qm 重新生成（0 条未完成）。
+
+ -- Feelup <testangel@163.com>  Thu, 22 Oct 2026 07:39:25 +0800
+
+panshi-manager (1.0.5) unstable; urgency=medium
+
+  * 系统更新页新增「待更新软件包」明细区：检查完成后按用途分组展示待更新
+    软件包清单（组标题带数量徽章，包名中部省略、悬停显示全名，版本仅在新旧
+    不同时展示），解决原来只报计数、用户看不到要更新哪些包的问题。
+  * 明细数据取自 apt 只读视图（apt.real 真身，不提权、LC_ALL=C 钉死输出
+    语言），与 deepin-immutable-ctl 计数同源互证；查询失败时静默收起明细区，
+    计数结论不受影响。
+  * 重查开始时状态卡复位为「检查中」，避免二轮检查仍挂着一轮结论造成误导。
+
+ -- Feelup <testangel@163.com>  Wed, 21 Oct 2026 21:45:00 +0800
+
+panshi-manager (1.0.4) unstable; urgency=medium
+
+  * 修复弹窗「透明 + 无响应」：disableDialogTransparency() 关闭 DTK 窗口模糊后，
+    DDialog 的半透明背景直接透出页面文字；且手动冻结内容区时弹窗挂在页面子树内、
+    被父链禁用一并失去响应。修复：保留 DTK 原生模糊渲染（该函数改为空操作），
+    弹窗 Show 前重挂到顶层窗口，冻结内容区不再波及弹窗自身（悬停/Esc/点击全部恢复）。
+  * 「开启保护」区域收敛为唯一入口：移除重复的「开启保护（恢复只读）」行与
+    「关闭保护（高级操作）」折叠区，统一由 PanshiSwitch 决策（普通确认 /
+    临时-完全单选 / 完全关闭 30s 倒计时）；跨页高亮 highlightEnableProtect
+    改落在开关行上。
+  * 修复内容区点击失效回归：冻结机制在构造期误冻结内容区（QListView 等控件处于
+    disabled 状态，点击事件被忽略），冻结守卫仅在弹窗 Show 时生效，
+    标题栏菜单 / 侧栏切页 / 按钮全部恢复可用。
+  * 成功类页内 Banner 自动消失契约验证通过（单发定时器 + setText 换内容即停，
+    旧定时器不误杀新 Banner）。
+
+ -- Feelup <testangel@163.com>  Tue, 06 Oct 2026 22:35:00 +0800
 panshi-manager (1.0.3) unstable; urgency=medium
 
   * 修复总览页「磐石部署」显示为空：getDeployVersion() 取了 deploy_list 的
@@ -11,7 +55,7 @@ panshi-manager (1.0.3) unstable; urgency=medium
     panshi-backendprobe 两个开发期探针，分别验证图标解析链路（含像素级
     可见性）与后端取值来源（含反向对照）。
 
- -- Deepin Packages Builder <packages@deepin.com>  Mon, 05 Oct 2026 07:55:00 +0800
+ -- Feelup <testangel@163.com>  Mon, 05 Oct 2026 07:55:00 +0800
 
 panshi-manager (1.0.2) unstable; urgency=medium
 
@@ -28,7 +72,7 @@ panshi-manager (1.0.2) unstable; urgency=medium
     配合 GSETTINGS_BACKEND=keyfile 可在无 dconf daemon 的环境下做
     「改系统设置 → 观察变化 → 恢复」的双向验证。
 
- -- Deepin Packages Builder <packages@deepin.com>  Mon, 05 Oct 2026 07:24:00 +0800
+ -- Feelup <testangel@163.com>  Mon, 05 Oct 2026 07:24:00 +0800
 
 panshi-manager (1.0.1) unstable; urgency=medium
 
@@ -46,7 +90,7 @@ panshi-manager (1.0.1) unstable; urgency=medium
   * 打包规范对齐官方示例：Build-Depends 补 systemd，rules 补
     hardening=+all 与 CMAKE_SKIP_BUILD_RPATH=ON。
 
- -- Deepin Packages Builder <packages@deepin.com>  Mon, 05 Oct 2026 06:54:00 +0800
+ -- Feelup <testangel@163.com>  Mon, 05 Oct 2026 06:54:00 +0800
 
 panshi-manager (1.0.0) unstable; urgency=medium
 
@@ -60,4 +104,4 @@ panshi-manager (1.0.0) unstable; urgency=medium
   * 符合 deepin 打包规范：debhelper-compat 13、source format 3.0 (native)、
     dh cmake 构建系统。
 
- -- Deepin Packages Builder <packages@deepin.com>  Sun, 04 Oct 2026 22:48:00 +0800
+ -- Feelup <testangel@163.com>  Sun, 04 Oct 2026 22:48:00 +0800

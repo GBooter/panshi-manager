@@ -77,6 +77,16 @@ protected:
     /** DTK 在 showEvent 里可能重建内容 → 每次显示前重新铺一次（幂等） */
     void showEvent(QShowEvent *event) override;
 
+    /**
+     * 自绘不透明圆角底。
+     * DDialog 自身 `WA_TranslucentBackground` 且不画任何背景，整窗底色原本只能靠
+     * 库内 DBlurEffectWidget（WM 合成层，离屏抓不到、真机 alpha 写死半透明）。
+     * 改为在本函数画不透明圆角底：这层是 Qt 控件绘制，grab() 可捕获、真机也生效，
+     * 整窗恒不透明（圆角外透出桌面＝圆角观感）。DBlurEffectWidget 已在 showEvent
+     * 的隐藏循环里被隐藏，避免它再以半透明像素盖上来。
+     */
+    void paintEvent(QPaintEvent *event) override;
+
 private:
     /** 构建自绘内容（只建一次，挂在 showEvent 里） */
     QWidget *buildBody();

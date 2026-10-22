@@ -4,48 +4,122 @@
 <context>
     <name>AboutPage</name>
     <message>
-        <location filename="../src/pages/aboutpage.cpp" line="+41"/>
+        <location filename="../src/pages/aboutpage.cpp" line="+63"/>
         <source>关于</source>
         <translation>About</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+0"/>
+        <source>关于磐石设置</source>
+        <translation>About Panshi Manager</translation>
+    </message>
+    <message>
+        <location line="+22"/>
         <source>磐石设置</source>
         <translation>Panshi Manager</translation>
     </message>
     <message>
-        <location line="+7"/>
-        <source>版本 1.0.0  ·  Deepin 25 磐石系统管理工具</source>
-        <translation>Version 1.0.0  ·  Deepin 25 immutable system management tool</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>基于 deepin-immutable-ctl / deepin-immutable-writable / OSTree 开发
-支持 Deepin 25 (X11 / Wayland), 采用 DDE 桌面风格 (DTK)</source>
-        <translation>Built on deepin-immutable-ctl / deepin-immutable-writable / OSTree · Supports Deepin 25 (X11 / Wayland) · Uses the DDE desktop style (DTK)</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>作者：Feelup</source>
-        <translation>Author: Feelup</translation>
-    </message>
-    <message>
-        <location line="+19"/>
+        <location line="+45"/>
         <source>磐石系统技术参考</source>
         <translation>Immutable system technical reference</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>· 核心目录只读保护: /usr 只读 overlay, /etc /opt 可写 overlay
-· 原子更新: 升级失败自动回滚 (auto-rollback-on-failure)
-· 快照备份: 基于 OSTree 秒级增量快照, 支持导出/导入
-· 初始备份受系统保护, 不可删除/修改
-· 快照还原需重启生效, 可写层开启时禁止还原
-· 系统与数据分区分层: /home 等数据分区不受还原影响</source>
-        <translation>· Read-only core directories: /usr read-only overlay, /etc /opt writable overlay · Atomic updates: auto-rollback-on-failure · Snapshot backup: OSTree-based second-level incremental snapshots, export/import supported · The initial backup is system-protected and cannot be deleted or modified · Snapshot rollback requires a reboot and is blocked while the writable layer is active · System and data are layered separately: data partitions such as /home are unaffected by rollback</translation>
+        <location line="-25"/>
+        <source>技术基础</source>
+        <translation>Technology stack</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="-10"/>
+        <source>版本 %1  ·  Deepin 25 磐石系统管理工具</source>
+        <translation>Version %1  ·  Deepin 25 immutable system management tool</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>deepin-immutable-ctl / deepin-immutable-writable / OSTree</source>
+        <translation>deepin-immutable-ctl / deepin-immutable-writable / OSTree</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>支持平台</source>
+        <translation>Supported platforms</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Deepin 25（X11 / Wayland），DDE 桌面风格（DTK）</source>
+        <translation>Deepin 25 (X11 / Wayland), DDE desktop style (DTK)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>作者</source>
+        <translation>Author</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Feelup</source>
+        <translation>Feelup</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>核心目录只读保护</source>
+        <translation>Read-only system directories</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>/usr 只读 overlay，/etc /opt 可写 overlay</source>
+        <translation>/usr read-only overlay; /etc and /opt writable overlay</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>原子更新</source>
+        <translation>Atomic updates</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>升级失败自动回滚（auto-rollback-on-failure）</source>
+        <translation>Automatic rollback on upgrade failure (auto-rollback-on-failure)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>快照备份</source>
+        <translation>Snapshot backups</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>基于 OSTree 秒级增量快照，支持导出/导入</source>
+        <translation>Second-level incremental snapshots based on OSTree, with export/import support</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>初始备份保护</source>
+        <translation>Initial backup protection</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>初始备份受系统保护，不可删除/修改</source>
+        <translation>The initial backup is system-protected and cannot be deleted or modified</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>还原需重启</source>
+        <translation>Restore requires reboot</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>快照还原需重启生效，可写层开启时禁止还原</source>
+        <translation>Snapshot restore takes effect after reboot; restore is disabled while the writable layer is enabled</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>分层存储</source>
+        <translation>Layered storage</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>系统与数据分区分层，/home 等数据分区不受还原影响</source>
+        <translation>System and data partitions are separated; data partitions such as /home are unaffected by restore</translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>常用命令参考</source>
         <translation>Common command reference</translation>
     </message>
@@ -80,7 +154,7 @@
         <translation>Deployment status</translation>
     </message>
     <message>
-        <location line="-52"/>
+        <location line="-67"/>
         <source>复制版本信息</source>
         <translation>Copy version info</translation>
     </message>
@@ -111,73 +185,144 @@
 <context>
     <name>DeploysPage</name>
     <message>
-        <location filename="../src/pages/deployspage.cpp" line="+211"/>
-        <source>不能删除当前启动的部署</source>
-        <translation>Cannot delete the currently booted deployment</translation>
-    </message>
-    <message>
-        <location line="+31"/>
+        <location filename="../src/pages/deployspage.cpp" line="+337"/>
         <source>删除</source>
         <translation>Delete</translation>
     </message>
     <message>
-        <location line="-3"/>
-        <source>删除后该版本的系统将无法再启动，占用空间会被释放。</source>
-        <translation>After deletion, this system version will no longer be bootable and its disk space will be released.</translation>
-    </message>
-    <message>
-        <location line="-28"/>
-        <source>删除该旧部署以释放空间</source>
-        <translation>Delete this old deployment to free up space</translation>
-    </message>
-    <message>
-        <location line="-2"/>
-        <location line="+29"/>
+        <location line="-45"/>
+        <location line="+40"/>
         <source>删除部署</source>
         <translation>Delete deployment</translation>
     </message>
     <message>
-        <location line="-45"/>
+        <location line="-62"/>
         <source>历史</source>
         <translation>History</translation>
     </message>
     <message>
-        <location line="+50"/>
+        <location line="-3"/>
+        <source>还原系统时自动创建的安全部署，确认系统正常后可以删除。</source>
+        <translation>A safety deployment created automatically before a rollback. Delete it once the system is confirmed working.</translation>
+    </message>
+    <message>
+        <location line="-190"/>
+        <source>部署总数</source>
+        <translation>Total deployments</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>可删除部署</source>
+        <translation>Deletable</translation>
+    </message>
+    <message>
+        <location line="+67"/>
+        <source>提示：带「当前启动」「待生效」标记的部署受系统保护，不能删除；要回到某个时间点，请到「系统快照」页还原。</source>
+        <translation>Deployments marked Current or Pending are system-protected and cannot be deleted; to return to a point in time, restore from the Snapshots page.</translation>
+    </message>
+    <message>
+        <location line="+125"/>
+        <source>已不再使用的旧系统，可删除以释放磁盘空间。</source>
+        <translation>An older system no longer in use. Can be deleted to free disk space.</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>这是当前正在运行的系统，不能删除。</source>
+        <translation>This is the system currently running. It cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>这是系统更新后待生效的新系统，重启电脑后才会启用，目前受系统保护，不能删除。</source>
+        <translation>This is the new system pending activation after an update. It takes effect after a reboot and is currently protected by the system, so it cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>该部署缺少标识信息，无法删除，请刷新列表后重试。</source>
+        <translation>This deployment has no identifier and cannot be deleted. Refresh the list and try again.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>删除该部署实例以释放磁盘空间，删除后该系统将无法再启动。</source>
+        <translation>Delete this deployment to free disk space. Once deleted, that system can no longer boot.</translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>删除后该版本的系统将无法再启动，占用空间会被释放。此操作不可撤销。</source>
+        <translation>After deletion this system can no longer boot and its disk space is released. This cannot be undone.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>提交ID: %1</source>
+        <translation>Commit ID: %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location line="-57"/>
-        <source>回滚前</source>
-        <translation>Pre-rollback</translation>
+        <location line="-304"/>
+        <source>该版本是系统更新后待生效的新系统，重启电脑后才会启用，目前受系统保护，无法删除。</source>
+        <translation>This is the new system pending activation after an update. It takes effect after a reboot and is currently protected, so it cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>这是当前正在运行的系统版本，无法删除。</source>
+        <translation>This is the system currently running. It cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>找不到对应的系统版本（索引越界或已不存在），请刷新列表后重试。</source>
+        <translation>The target deployment was not found (index out of range or already gone). Refresh the list and try again.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>没有获得管理员授权，删除未执行。请确认已正确输入密码；若仍失败，请检查系统的授权（polkit）设置。</source>
+        <translation>Administrator authorization was not granted, so nothing was deleted. Check that the password was entered correctly; if it still fails, check the system&apos;s polkit authorization settings.</translation>
+    </message>
+    <message>
+        <location line="+52"/>
+        <source>版本号</source>
+        <translation>Version</translation>
+    </message>
+    <message>
+        <location line="+48"/>
+        <source>暂无系统部署实例</source>
+        <translation>No system deployments</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>回滚前自动创建的安全版本, 确认系统正常后可删除</source>
-        <translation>Safety version created automatically before rollback; delete it after confirming the system works normally</translation>
+        <source>每次系统升级或回滚都会生成一个新的可启动系统（部署实例）。</source>
+        <translation>Every system upgrade or rollback creates a new bootable system (a deployment).</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+120"/>
+        <source>待生效</source>
+        <translation>Pending</translation>
+    </message>
+    <message>
+        <location line="-3"/>
+        <source>此刻正在运行的系统，受系统保护，不能删除。</source>
+        <translation>The system running right now. It is protected and cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>系统更新后待生效的新系统，重启电脑后才会启用，届时它会变成「当前启动」。受系统保护，不能删除。</source>
+        <translation>The new system pending activation after an update. It takes effect after a reboot, at which point it becomes &quot;Running&quot;. It is protected and cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>回滚备份</source>
         <translation>Rollback backup</translation>
     </message>
     <message>
-        <location line="-12"/>
-        <source>当前</source>
-        <translation>Current</translation>
-    </message>
-    <message>
-        <location line="+11"/>
+        <location line="-188"/>
+        <location line="+180"/>
         <source>当前启动</source>
         <translation>Currently booted</translation>
     </message>
     <message>
-        <location line="-10"/>
-        <source>当前正在运行的系统版本</source>
-        <translation>The system version currently running</translation>
-    </message>
-    <message>
-        <location line="-125"/>
+        <location line="-164"/>
         <source>提交ID</source>
         <translation>Commit ID</translation>
     </message>
@@ -187,83 +332,63 @@
         <translation>Actions</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+9"/>
         <source>系统部署列表</source>
         <translation>System Deployment List</translation>
     </message>
     <message>
-        <location line="+28"/>
-        <source>暂无系统版本</source>
-        <translation>No system versions yet</translation>
-    </message>
-    <message>
-        <location line="+121"/>
+        <location line="+203"/>
         <source>删除部署：%1</source>
         <translation>Delete deployment: %1</translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="+40"/>
         <source>正在删除部署...</source>
         <translation>Deleting deployment...</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="-304"/>
         <source>删除失败，请查看详情了解具体原因。</source>
         <translation>Deletion failed. See the details for the specific reason.</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+322"/>
         <source>完整输出</source>
         <translation>Full output</translation>
     </message>
     <message>
-        <location line="-218"/>
-        <location line="+72"/>
+        <location line="-277"/>
+        <location line="+87"/>
         <source>正在读取部署状态...</source>
         <translation>Reading deployment status...</translation>
     </message>
     <message>
-        <location line="-30"/>
-        <source>每次系统升级或回滚都会生成一个新的可启动系统版本（部署）。</source>
-        <translation>Every system upgrade or rollback creates a new bootable system version (deployment).</translation>
-    </message>
-    <message>
-        <location line="-37"/>
+        <location line="-81"/>
         <source>状态</source>
         <translation>Status</translation>
     </message>
     <message>
-        <location line="+0"/>
-        <source>系统版本</source>
-        <translation>System version</translation>
-    </message>
-    <message>
-        <location line="+184"/>
+        <location line="+241"/>
         <source>系统版本: %1</source>
         <translation>System version: %1</translation>
     </message>
     <message>
-        <location line="-184"/>
+        <location line="-241"/>
         <source>索引</source>
         <translation>Index</translation>
     </message>
     <message>
-        <location line="+41"/>
-        <source>说明: 当前启动的版本带「当前」标记; 历史版本会占用磁盘空间, 可删除以释放空间, 但不能删除当前正在使用的版本。</source>
-        <translation>Note: The currently booted version carries a “Current” tag; historical versions occupy disk space and can be deleted to free it, but the version currently in use cannot be deleted.</translation>
-    </message>
-    <message>
-        <location line="+166"/>
+        <location line="+265"/>
         <source>部署已删除，占用空间已释放。</source>
         <translation>Deployment deleted and its disk space released.</translation>
     </message>
     <message>
-        <location line="-206"/>
+        <location line="-264"/>
         <source>部署时间</source>
         <translation>Deployed at</translation>
     </message>
     <message>
-        <location line="+184"/>
+        <location line="+241"/>
         <source>部署时间: %1</source>
         <translation>Deployed at: %1</translation>
     </message>
@@ -271,7 +396,7 @@
 <context>
     <name>DiskUsagePage</name>
     <message>
-        <location filename="../src/pages/diskusagepage.cpp" line="+384"/>
+        <location filename="../src/pages/diskusagepage.cpp" line="+442"/>
         <source>磁盘空间</source>
         <translation>Disk usage</translation>
     </message>
@@ -281,23 +406,23 @@
         <translation>Monitor system disk usage continuously and locate the source of growth</translation>
     </message>
     <message>
-        <location line="+69"/>
-        <location line="+738"/>
+        <location line="+73"/>
+        <location line="+1557"/>
         <source>正在检测服务状态…</source>
         <translation>Detecting service status…</translation>
     </message>
     <message>
-        <location line="-735"/>
+        <location line="-1554"/>
         <source>立即启动</source>
         <translation>Start now</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+18"/>
         <source>监控设置</source>
         <translation>Monitoring settings</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+27"/>
         <source>时间线</source>
         <translation>Timeline</translation>
     </message>
@@ -307,14 +432,35 @@
         <translation>A line chart of daily disk usage; click a data point for that day&apos;s growth details</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="-32"/>
         <source>立即扫描</source>
         <translation>Scan now</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+8"/>
+        <location line="+1443"/>
+        <source>告警历史</source>
+        <translation>Alert History</translation>
+    </message>
+    <message>
+        <location line="-1441"/>
+        <source>查看全部历史告警，包括已手动关闭的</source>
+        <translation>View all alert history, including manually dismissed ones</translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>正常</source>
+        <translation>Normal</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>正常增长</source>
         <translation>Normal growth</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>异常</source>
+        <translation>Abnormal</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -322,115 +468,115 @@
         <translation>Abnormal growth</translation>
     </message>
     <message>
+        <location line="+2"/>
+        <source>选中</source>
+        <translation>Selected</translation>
+    </message>
+    <message>
         <location line="+1"/>
         <source>选中日</source>
         <translation>Selected day</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>趋势</source>
         <translation>Trend</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+1"/>
+        <source>趋势线</source>
+        <translation>Trend</translation>
+    </message>
+    <message>
+        <location line="+43"/>
+        <source>所选范围内的增长结论与容量预测</source>
+        <translation>Growth summary and capacity forecast for the selected range</translation>
+    </message>
+    <message>
+        <location line="+15"/>
         <source>%1 天</source>
         <translation>%1 days</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+4"/>
         <source>自定义</source>
         <translation>Custom</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+79"/>
+        <source>容量预测</source>
+        <translation>Capacity Forecast</translation>
+    </message>
+    <message>
+        <location line="+59"/>
+        <source>增长起点</source>
+        <translation>Growth Start</translation>
+    </message>
+    <message>
+        <location line="+46"/>
+        <source>磁盘分析</source>
+        <translation>Disk Analysis</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>同一份目录占用数据的三种看法：看结构（构成）、看变化（增长）、看全量（排行）</source>
+        <translation>Three views of the same directory usage data: structure (Composition), change (Growth), and the full list (Ranking)</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <location line="+2"/>
+        <location line="+321"/>
         <source>返回系统盘</source>
         <translation>Back to system disk</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="-543"/>
         <source>区间汇总</source>
         <translation>Range summary</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>增长详情</source>
-        <translation>Growth details</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>占用排行</source>
-        <translation>Usage ranking</translation>
-    </message>
-    <message>
-        <location line="+60"/>
+        <location line="+49"/>
         <source>净增长</source>
         <translation>Net growth</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+103"/>
         <source>日均增长</source>
         <translation>Daily average</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>最大单日</source>
         <translation>Largest single day</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>趋势起始日</source>
-        <translation>Trend start date</translation>
-    </message>
-    <message>
-        <location line="+12"/>
-        <source>区间增长 Top 项</source>
-        <translation>Top growth items in range</translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>说明：这里列出所选日期（点击时间线数据点）相对前一日有增长的目录/文件，按增长量排序，最多 8 项；每天增长的目录数量不同，列表项数也随之变化，当天无增长时则显示提示。点击目录行可切换上方时间线。</source>
-        <translation>Note: this lists the directories/files that grew on the selected day (click a timeline data point) relative to the previous day, sorted by growth, up to 8 items. The number of growing directories varies each day, so the list length changes accordingly; a hint is shown when there is no growth that day. Click a directory row to switch the timeline above.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <location line="+20"/>
+        <location line="+106"/>
         <source>名称</source>
         <translation>Name</translation>
     </message>
     <message>
-        <location line="-20"/>
-        <location line="+20"/>
+        <location line="+0"/>
         <source>大小</source>
         <translation>Size</translation>
     </message>
     <message>
-        <location line="-20"/>
-        <location line="+20"/>
+        <location line="+0"/>
         <source>操作</source>
         <translation>Actions</translation>
     </message>
     <message>
-        <location line="-18"/>
-        <source>增长详情表</source>
-        <translation>Growth Detail Table</translation>
-    </message>
-    <message>
-        <location line="+11"/>
+        <location line="-33"/>
+        <location line="+2"/>
         <source>返回上级</source>
         <translation>Back</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+31"/>
         <source>占比</source>
         <translation>Share</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>占用排行表</source>
-        <translation>Space Usage Ranking Table</translation>
-    </message>
-    <message>
-        <location line="+12"/>
+        <location line="+481"/>
         <source>磁盘空间设置</source>
         <translation>Disk usage settings</translation>
     </message>
@@ -466,7 +612,12 @@
         <translation>Fixed threshold</translation>
     </message>
     <message>
-        <location line="-1"/>
+        <location line="-9"/>
+        <source> 小时</source>
+        <translation> h</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>告警模式</source>
         <translation>Alert mode</translation>
     </message>
@@ -521,7 +672,12 @@
         <translation>Data storage</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+3"/>
+        <source> 天</source>
+        <translation> days</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>保留天数</source>
         <translation>Retention days</translation>
     </message>
@@ -542,27 +698,28 @@
     </message>
     <message>
         <location line="+1"/>
-        <location line="+830"/>
+        <location line="+962"/>
         <source>清除全部监控数据</source>
         <translation>Clear all monitoring data</translation>
     </message>
     <message>
-        <location line="-828"/>
+        <location line="-960"/>
         <source>数据管理</source>
         <translation>Data management</translation>
     </message>
     <message>
         <location line="+4"/>
+        <location line="+501"/>
         <source>关闭</source>
         <translation>Close</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="-449"/>
         <source>正在加载 %1 ~ %2 的数据…</source>
         <translation>Loading data for %1 ~ %2…</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="+46"/>
         <source>选择日期范围</source>
         <translation>Select a date range</translation>
     </message>
@@ -583,17 +740,17 @@
     </message>
     <message>
         <location line="+33"/>
-        <location line="+657"/>
+        <location line="+773"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location line="-656"/>
+        <location line="-772"/>
         <source>确定</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+34"/>
         <source>加载中 %1/%2 …</source>
         <translation>Loading %1/%2…</translation>
     </message>
@@ -628,33 +785,22 @@
         <translation>Total -- · Free --</translation>
     </message>
     <message>
-        <location line="+6"/>
-        <source>● 监控中 · 每 %1 分钟采样一次 · 历史保留 %2 天</source>
-        <translation>● Monitoring · Sampled every %1 min · History kept %2 days</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>○ 监控未开启：开启后将自动建立基线并持续监控</source>
-        <translation>○ Monitoring off: enable it to establish a baseline and monitor continuously</translation>
-    </message>
-    <message>
-        <location line="+2"/>
+        <location line="+12"/>
         <source>读取历史数据索引</source>
         <translation>Reading history index</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>
-最近记录 %1 · 该日增长 %2</source>
-        <translation>Latest record %1 · That day&apos;s growth %2</translation>
-    </message>
-    <message>
-        <location line="+16"/>
+        <location line="+60"/>
         <source>%1 · %2 增长 %3</source>
         <translation>%1 · %2 grew %3</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+92"/>
+        <source>%1 · %2 · 增长 %3</source>
+        <translation>%1 · %2 · +%3</translation>
+    </message>
+    <message>
+        <location line="+44"/>
         <source>正在检查系统信息…</source>
         <translation>Checking system information…</translation>
     </message>
@@ -684,38 +830,17 @@
         <translation>Monitoring component is not installed: install the app first (sudo ./install.sh)</translation>
     </message>
     <message>
-        <location line="+43"/>
-        <source>%1（%2）</source>
-        <translation>%1 (%2)</translation>
-    </message>
-    <message>
-        <location line="+8"/>
+        <location line="+73"/>
         <source>无连续增长</source>
         <translation>No sustained growth</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source>按当前增速约 %1 天后写满</source>
-        <translation>At the current rate, full in about %1 days</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>增长趋稳，暂无容量风险</source>
-        <translation>Growth is leveling off; no capacity risk at present</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>区间内无明显增长</source>
-        <translation>No notable growth in this range</translation>
-    </message>
-    <message>
-        <location line="+23"/>
-        <location line="+29"/>
+        <location line="-1225"/>
         <source>所选日期不在当前加载范围内</source>
         <translation>The selected date is outside the loaded range</translation>
     </message>
     <message>
-        <location line="-23"/>
+        <location line="+7"/>
         <source>目录 %1</source>
         <translation>Directory %1</translation>
     </message>
@@ -725,64 +850,111 @@
         <translation>No data</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>较前一日变化</source>
         <translation>Change vs. previous day</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+4"/>
         <source>前一日暂无数据</source>
         <translation>No data for the previous day</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+17"/>
         <source>该日无显著增长</source>
         <translation>No notable growth that day</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+35"/>
         <source>暂无数据：请开启监控或点击“立即扫描”</source>
         <translation>No data: enable monitoring or click “Scan now”</translation>
     </message>
     <message>
-        <location line="+53"/>
+        <location line="+1257"/>
         <source>当前显示：系统盘占用</source>
         <translation>Now showing: system disk usage</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+1"/>
         <source>目录“%1”暂无逐日数据，请先开启监控或在该目录下钻</source>
         <translation>No daily data for directory “%1”; enable monitoring or drill into it first</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+5"/>
         <source>当前显示：系统盘占用变化</source>
         <translation>Now showing: system disk usage change</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+4"/>
         <source>当前显示：目录 %1 的占用变化</source>
         <translation>Now showing: usage change for directory %1</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+27"/>
         <location line="+33"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
     </message>
     <message>
-        <location line="-279"/>
-        <location line="+307"/>
+        <location line="-225"/>
+        <location line="+253"/>
         <source>监控已开启，正在建立基线（由后台服务采样）</source>
         <translation>Monitoring enabled; establishing a baseline (sampled by the background service)</translation>
     </message>
     <message>
+        <location line="-1505"/>
+        <source>其它分区</source>
+        <translation>Other Partitions</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>系统盘之外的其它分区（按设备去重，容量/已用取自 df）；点击行右侧按钮可查看该分区内部构成</source>
+        <translation>Partitions other than the system disk (deduplicated by device; capacity/used taken from df). Click the button at the right of a row to view that partition&apos;s internal composition</translation>
+    </message>
+    <message>
+        <location line="+176"/>
+        <source>其他</source>
+        <translation>Other</translation>
+    </message>
+    <message>
+        <location line="+224"/>
+        <source>未检测到其它分区（单分区布局）</source>
+        <translation>No other partitions detected (single-partition layout)</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>%1 · %2 分区
+容量 %3 · 已用 %4</source>
+        <translation>%1 · %2 partition
+Capacity %3 · Used %4</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>查看 %1 内部构成</source>
+        <translation>View the internal composition of %1</translation>
+    </message>
+    <message>
+        <location line="+503"/>
+        <source>每 %1 分钟采样一次 · 历史保留 %2 天</source>
+        <translation>Sampled once every %1 minutes · history kept for %2 days</translation>
+    </message>
+    <message>
         <location line="+3"/>
+        <source>开启后自动建立基线并持续监控</source>
+        <translation>Once enabled, a baseline is established automatically and monitoring continues</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source> · 最近记录 %1 · 该日增长 %2</source>
+        <translation> · Last record %1 · growth that day %2</translation>
+    </message>
+    <message>
+        <location line="+560"/>
         <source>监控已关闭，历史数据保留</source>
         <translation>Monitoring disabled; history retained</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+56"/>
         <source>将删除所有历史占用记录与告警，且不可恢复。确定继续？</source>
         <translation>This will delete all history usage records and alerts, and cannot be undone. Continue?</translation>
     </message>
@@ -792,7 +964,7 @@
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="+27"/>
         <source>正在扫描系统盘目录…（可稍候，完成后自动刷新）</source>
         <translation>Scanning system disk directories… (this may take a while; it refreshes automatically when done)</translation>
     </message>
@@ -807,12 +979,174 @@
         <translation>Scan failed</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="-1233"/>
+        <location line="+80"/>
         <source>正在读取 %1 的子目录…</source>
         <translation>Reading subdirectories of %1…</translation>
     </message>
     <message>
-        <location line="-193"/>
+        <location line="-507"/>
+        <source>时间线恢复为系统盘占用，列表回到顶层目录</source>
+        <translation>The timeline returns to system disk usage and the list goes back to the top-level directory</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>回到上一层目录</source>
+        <translation>Go up one directory level</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>构成</source>
+        <translation>Composition</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>增长</source>
+        <translation>Growth</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>排行</source>
+        <translation>Ranking</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>磁盘分析表</source>
+        <translation>Disk analysis table</translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>构成：系统盘顶层目录的占用结构（前 5 项 + 其他），占比 = 占系统盘已用</source>
+        <translation>Composition: usage structure of the top-level system disk directories (top 5 + others); percentage = share of used system disk space</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>增长：所选日期相对前一日有增长的目录/文件（最多 8 项），占比 = 该目录增量占当日总增量</source>
+        <translation>Growth: directories/files that grew on the selected date versus the previous day (up to 8 items); percentage = that directory&apos;s increase as a share of the day&apos;s total increase</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>排行：当前目录下所有子项从大到小；单击行让上方时间线跟随，双击进入子目录</source>
+        <translation>Ranking: all sub-items under the current directory, largest first; click a row to make the timeline above follow it, double-click to enter a subdirectory</translation>
+    </message>
+    <message>
+        <location line="+81"/>
+        <source>点击时间线上任意数据点，查看该日的增长来源</source>
+        <translation>Click any data point on the timeline to see that day&apos;s growth sources</translation>
+    </message>
+    <message>
+        <location line="+44"/>
+        <source>正在读取子目录…</source>
+        <translation>Reading subdirectory…</translation>
+    </message>
+    <message>
+        <location line="+117"/>
+        <source>系统盘</source>
+        <translation>System Disk</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>返回系统盘时间线与顶层目录</source>
+        <translation>Return to the system disk timeline and top-level directory</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <location line="+2"/>
+        <source>回到 %1</source>
+        <translation>Back to %1</translation>
+    </message>
+    <message>
+        <location line="+725"/>
+        <source>告警历史（%1 条新增）</source>
+        <translation>Alert History (%1 new)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>告警历史（%1）</source>
+        <translation>Alert History (%1)</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>告警已关闭，可随时在「告警历史」中查看</source>
+        <translation>Alert dismissed; you can review it anytime in &quot;Alert History&quot;</translation>
+    </message>
+    <message>
+        <location line="+45"/>
+        <source>历史告警</source>
+        <translation>Alert History</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>暂无告警记录</source>
+        <translation>No alert records</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>按时间倒序；手动关闭过的告警仍保留在此</source>
+        <translation>In reverse chronological order; manually dismissed alerts are still kept here</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>清空历史</source>
+        <translation>Clear History</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>清空告警历史</source>
+        <translation>Clear alert history</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>将删除全部告警记录，且不可恢复。确定继续？</source>
+        <translation>This will delete all alert records and cannot be undone. Continue?</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>清空</source>
+        <translation>Clear</translation>
+    </message>
+    <message>
+        <location line="+158"/>
+        <source>%1 ~ %2 · %3 天 · %4 条记录</source>
+        <translation>%1 ~ %2 · %3 days · %4 records</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>区间起始 %1 → 结束 %2</source>
+        <translation>Range start %1 → end %2</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>所选范围内暂无监控数据</source>
+        <translation>No monitoring data in the selected range</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>约 %1 天后写满</source>
+        <translation>Will be full in about %1 days</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>按当前增速 · 预计 %1</source>
+        <translation>At the current growth rate · estimated %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>暂无风险</source>
+        <translation>No risk</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>增长已趋稳，短期不会写满</source>
+        <translation>Growth has stabilized; it will not fill up in the short term</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>暂无数据，无法预测</source>
+        <translation>No data; unable to forecast</translation>
+    </message>
+    <message>
+        <location line="+170"/>
         <source>监控服务%1失败：%2</source>
         <translation>Failed to %1 the monitoring service: %2</translation>
     </message>
@@ -827,13 +1161,13 @@
         <translation>stop</translation>
     </message>
     <message>
-        <location line="-292"/>
-        <location line="+293"/>
+        <location line="-238"/>
+        <location line="+239"/>
         <source>未知错误</source>
         <translation>unknown error</translation>
     </message>
     <message>
-        <location line="-293"/>
+        <location line="-239"/>
         <source>启动失败：%1</source>
         <translation>Failed to start: %1</translation>
     </message>
@@ -843,7 +1177,7 @@
         <translation>Cannot connect to the systemd user session</translation>
     </message>
     <message>
-        <location line="+599"/>
+        <location line="+457"/>
         <source>systemd 未识别监控单元（panshi-monitor.timer）</source>
         <translation>systemd does not recognize the monitoring unit (panshi-monitor.timer)</translation>
     </message>
@@ -856,13 +1190,13 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../src/mainwindow.cpp" line="+36"/>
+        <location filename="../src/mainwindow.cpp" line="+43"/>
         <location line="+5"/>
         <source>磐石设置</source>
         <translation>Panshi Manager</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+106"/>
         <source>概览</source>
         <translation>Overview</translation>
     </message>
@@ -894,7 +1228,7 @@
     <message>
         <location line="+2"/>
         <source>备份与版本</source>
-        <translation>Backups &amp; versions</translation>
+        <translation>Backups</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -911,11 +1245,31 @@
         <source>关于</source>
         <translation>About</translation>
     </message>
+    <message>
+        <location line="+41"/>
+        <source>语言</source>
+        <translation>Language</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>跟随系统</source>
+        <translation>Follow system</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>简体中文</source>
+        <translation>Simplified Chinese</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>English</source>
+        <translation>English</translation>
+    </message>
 </context>
 <context>
     <name>OverviewPage</name>
     <message>
-        <location filename="../src/pages/overviewpage.cpp" line="+38"/>
+        <location filename="../src/pages/overviewpage.cpp" line="+168"/>
         <source>总览</source>
         <translation>Overview</translation>
     </message>
@@ -925,17 +1279,7 @@
         <translation>At a glance: Panshi system status</translation>
     </message>
     <message>
-        <location line="+15"/>
-        <source>磐石功能</source>
-        <translation>Panshi features</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>总开关：控制磐石系统保护的启用状态</source>
-        <translation>Master switch: controls whether Panshi system protection is enabled</translation>
-    </message>
-    <message>
-        <location line="+14"/>
+        <location line="+43"/>
         <source>磐石保护</source>
         <translation>Panshi protection</translation>
     </message>
@@ -946,8 +1290,8 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>备份快照</source>
-        <translation>Backup snapshots</translation>
+        <source>系统快照</source>
+        <translation>System snapshots</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -955,7 +1299,12 @@
         <translation>System disk free</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+33"/>
+        <source>可用空间</source>
+        <translation>Available Space</translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>系统信息</source>
         <translation>System information</translation>
     </message>
@@ -985,17 +1334,28 @@
         <translation>Panshi deployments</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+167"/>
+        <location line="+38"/>
+        <source>%1 个</source>
+        <translation>%1</translation>
+    </message>
+    <message>
+        <location line="-231"/>
         <source>存储空间</source>
         <translation>Storage</translation>
     </message>
     <message>
-        <location line="+0"/>
+        <location line="-63"/>
+        <source>刷新状态</source>
+        <translation>Refresh Status</translation>
+    </message>
+    <message>
+        <location line="+63"/>
         <source>磐石系统各仓库占用（物理）</source>
         <translation>Physical usage of each Panshi repository</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+9"/>
         <source>系统仓库 /ostree</source>
         <translation>System repo /ostree</translation>
     </message>
@@ -1010,12 +1370,7 @@
         <translation>Snapshot data</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>系统盘可用</source>
-        <translation>System disk free</translation>
-    </message>
-    <message>
-        <location line="+10"/>
+        <location line="+25"/>
         <source>快速操作</source>
         <translation>Quick actions</translation>
     </message>
@@ -1025,44 +1380,38 @@
         <translation>Shortcuts to common features</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+5"/>
         <source>立即创建备份</source>
         <translation>Create backup now</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+11"/>
         <source>检查系统更新</source>
         <translation>Check for updates</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
         <source>保护设置</source>
         <translation>Protection settings</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+80"/>
         <source>正在读取磐石系统状态…</source>
         <translation>Reading Panshi system status…</translation>
     </message>
     <message>
-        <location line="+51"/>
-        <source>%1 个 · 计算中…</source>
-        <translation>%1 · calculating…</translation>
-    </message>
-    <message>
-        <location line="+2"/>
+        <location line="+55"/>
+        <location line="+4"/>
+        <location line="+1"/>
+        <location line="+1"/>
+        <location line="+1"/>
         <source>统计中…</source>
         <translation>Calculating…</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+14"/>
         <source>正在统计存储空间…</source>
         <translation>Calculating storage usage…</translation>
-    </message>
-    <message>
-        <location line="+24"/>
-        <source>%1 个 · %2</source>
-        <translation>%1 · %2</translation>
     </message>
 </context>
 <context>
@@ -1111,7 +1460,7 @@
 <context>
     <name>Panshi::DiskScanner</name>
     <message>
-        <location filename="../src/disk/scanner.cpp" line="+213"/>
+        <location filename="../src/disk/scanner.cpp" line="+323"/>
         <source>扫描已取消</source>
         <translation>Scan cancelled</translation>
     </message>
@@ -1124,7 +1473,7 @@
 <context>
     <name>PanshiCountdownDialog</name>
     <message>
-        <location filename="../src/widgets/countdowndialog.cpp" line="+82"/>
+        <location filename="../src/widgets/countdowndialog.cpp" line="+84"/>
         <source>即将完全关闭磐石保护</source>
         <translation>About to fully disable Panshi protection</translation>
     </message>
@@ -1155,7 +1504,7 @@
     </message>
     <message>
         <location line="+7"/>
-        <location line="+31"/>
+        <location line="+32"/>
         <source>我已知晓风险，完全关闭（%1s）</source>
         <translation>I understand the risk, disable fully (%1s)</translation>
     </message>
@@ -1169,55 +1518,89 @@
     <name>PanshiProtection</name>
     <message>
         <location filename="../src/pages/protectioncards.h" line="+95"/>
-        <source>只读保护</source><translation>Read-only protection</translation></message>
+        <source>只读保护</source>
+        <translation>Read-only protection</translation>
+    </message>
     <message>
         <location line="+5"/>
-        <source>可写层</source><translation>Writable layer</translation></message>
+        <source>可写层</source>
+        <translation>Writable layer</translation>
+    </message>
     <message>
         <location line="+5"/>
-        <source>重启后状态</source><translation>State after reboot</translation></message>
+        <source>重启后状态</source>
+        <translation>State after reboot</translation>
+    </message>
     <message>
         <location line="+13"/>
-        <source>已开启</source><translation>Enabled</translation></message>
+        <source>已开启</source>
+        <translation>Enabled</translation>
+    </message>
     <message>
         <location line="+0"/>
-        <source>已关闭</source><translation>Disabled</translation></message>
+        <source>已关闭</source>
+        <translation>Disabled</translation>
+    </message>
     <message>
         <location line="+2"/>
-        <source>核心目录只读</source><translation>Core directories read-only</translation></message>
+        <source>核心目录只读</source>
+        <translation>Core directories read-only</translation>
+    </message>
     <message>
         <location line="+0"/>
-        <source>核心目录可写</source><translation>Core directories writable</translation></message>
+        <source>核心目录可写</source>
+        <translation>Core directories writable</translation>
+    </message>
     <message>
         <location line="+19"/>
-        <source>已解锁</source><translation>Unlocked</translation></message>
+        <source>已解锁</source>
+        <translation>Unlocked</translation>
+    </message>
     <message>
         <location line="+0"/>
-        <source>已锁定</source><translation>Locked</translation></message>
+        <source>已锁定</source>
+        <translation>Locked</translation>
+    </message>
     <message>
         <location line="+2"/>
-        <source>开发调试模式</source><translation>Debug mode</translation></message>
+        <source>开发调试模式</source>
+        <translation>Debug mode</translation>
+    </message>
     <message>
         <location line="+0"/>
-        <source>未启用</source><translation>Not enabled</translation></message>
+        <source>未启用</source>
+        <translation>Not enabled</translation>
+    </message>
     <message>
         <location line="+17"/>
-        <source>恢复只读</source><translation>Restores read-only</translation></message>
+        <source>恢复只读</source>
+        <translation>Restores read-only</translation>
+    </message>
     <message>
         <location line="+0"/>
-        <source>仍保持可写</source><translation>Stays writable</translation></message>
+        <source>仍保持可写</source>
+        <translation>Stays writable</translation>
+    </message>
     <message>
         <location line="+2"/>
-        <source>临时关闭</source><translation>Temporarily off</translation></message>
+        <source>临时关闭</source>
+        <translation>Temporarily off</translation>
+    </message>
     <message>
         <location line="+0"/>
-        <source>永久关闭</source><translation>Permanently off</translation></message>
+        <source>永久关闭</source>
+        <translation>Permanently off</translation>
+    </message>
     <message>
         <location line="+6"/>
-        <source>仍为只读</source><translation>Stays read-only</translation></message>
+        <source>仍为只读</source>
+        <translation>Read-only</translation>
+    </message>
     <message>
         <location line="+2"/>
-        <source>未做变更</source><translation>No change</translation></message>
+        <source>未做变更</source>
+        <translation>No change</translation>
+    </message>
 </context>
 <context>
     <name>PanshiSwitch::PanshiSwitchRow</name>
@@ -1235,12 +1618,12 @@
 <context>
     <name>PanshiUi::PanshiAboutDialog</name>
     <message>
-        <location filename="../src/ui/aboutdialog.cpp" line="+268"/>
+        <location filename="../src/ui/aboutdialog.cpp" line="+277"/>
         <source>关于磐石设置</source>
         <translation>About Panshi Manager</translation>
     </message>
     <message>
-        <location line="+110"/>
+        <location line="+121"/>
         <source>应用图标</source>
         <translation>Application icon</translation>
     </message>
@@ -1323,7 +1706,7 @@
 <context>
     <name>PolicyPage</name>
     <message>
-        <location filename="../src/pages/policypage.cpp" line="+53"/>
+        <location filename="../src/pages/policypage.cpp" line="+54"/>
         <source>策略与设置</source>
         <translation>Policies &amp; settings</translation>
     </message>
@@ -1333,111 +1716,134 @@
         <translation>Backup retention policies and immutable system parameters</translation>
     </message>
     <message>
-        <location line="+16"/>
-        <location line="+115"/>
-        <source>备份保留策略</source>
-        <translation>Backup retention policy</translation>
-    </message>
-    <message>
-        <location line="-58"/>
-        <location line="+59"/>
+        <location line="+123"/>
+        <location line="+56"/>
         <source>磐石系统参数</source>
         <translation>Immutable system parameters</translation>
     </message>
     <message>
-        <location line="-114"/>
-        <source>磐石系统升级时会自动创建备份(系统内置, 不可关闭)。应用通过以下策略避免备份无限累积。</source>
-        <translation>The immutable system creates a backup automatically on upgrade (built in, cannot be disabled). The policies below keep backups from piling up indefinitely.</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>自动清理超额备份</source>
-        <translation>Auto-clean excess backups</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>超过数量上限时, 自动删除最旧的普通备份(初始备份永不删除)</source>
-        <translation>When the limit is exceeded, delete the oldest regular backups (the initial backup is never deleted)</translation>
-    </message>
-    <message>
-        <location line="+12"/>
+        <location line="-153"/>
         <source>备份数量上限</source>
         <translation>Backup count limit</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>超过上限后自动删除最旧的普通备份, 释放存储空间</source>
-        <translation>Delete the oldest regular backups once the limit is exceeded, freeing storage</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source> 个 (0=不限)</source>
-        <translation> (0 = unlimited)</translation>
-    </message>
-    <message>
-        <location line="+12"/>
-        <source>回滚前备份自动清理</source>
-        <translation>Auto-clean pre-rollback backups</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>还原前自动创建“回滚前备份”, 回滚成功后重启3次正常即自动删除该备份</source>
-        <translation>A “pre-rollback backup” is created before restore; after a successful rollback it is deleted once the system restarts normally three times</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>手动删除(默认, 最安全)</source>
-        <translation>Delete manually (default, safest)</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>重启3次正常后自动删除</source>
-        <translation>Auto-delete after 3 normal restarts</translation>
-    </message>
-    <message>
-        <location line="+17"/>
-        <source>写入 /etc/deepin-immutable-ctl/deepin-immutable-ctl.conf (需管理员权限)</source>
-        <translation>Written to /etc/deepin-immutable-ctl/deepin-immutable-ctl.conf (requires administrator privileges)</translation>
-    </message>
-    <message>
-        <location line="+2"/>
+        <location line="+103"/>
         <source>保存系统参数</source>
         <translation>Save system parameters</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="-52"/>
         <source>升级失败自动回滚</source>
         <translation>Auto-rollback on failed upgrade</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>系统升级失败时自动回滚到升级前状态, 避免系统无法启动</source>
-        <translation>Automatically roll back to the pre-upgrade state when an upgrade fails, so the system stays bootable</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>最大备份部署数</source>
-        <translation>Max backup deployments</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>升级/回滚时保留的旧系统部署数量(默认1, 新备份自动覆盖旧备份)</source>
-        <translation>Number of old system deployments kept during upgrade/rollback (default 1; new backups overwrite old ones)</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="-47"/>
+        <location line="+80"/>
         <source> 个</source>
-        <translation> </translation>
+        <translation> items</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+26"/>
         <source>自动刷新阈值</source>
         <translation>Auto-refresh threshold</translation>
     </message>
     <message>
+        <location line="-119"/>
+        <location line="+160"/>
+        <source>备份保留</source>
+        <translation>Backup Retention</translation>
+    </message>
+    <message>
+        <location line="-159"/>
+        <source>系统升级会自动创建备份（系统内置，不可关闭）。以下策略控制备份保留与清理，避免无限累积。</source>
+        <translation>System upgrades automatically create backups (built-in, cannot be disabled). The policies below control backup retention and cleanup to prevent unlimited accumulation.</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <location line="+51"/>
+        <source>即时生效</source>
+        <translation>Takes Effect Immediately</translation>
+    </message>
+    <message>
+        <location line="-45"/>
+        <source>0 表示不限；超出后按清理策略处理</source>
+        <translation>0 means unlimited; when exceeded, backups are handled per the cleanup policy</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>超限自动清理</source>
+        <translation>Auto-clean Excess Backups</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>仅删除最旧普通备份；初始备份永不删除</source>
+        <translation>Only the oldest normal backup is removed; the initial backup is never deleted</translation>
+    </message>
+    <message>
         <location line="+1"/>
-        <source>修改层超过该阈值时自动刷新合并到系统层</source>
-        <translation>Refresh and merge the writable layer into the system layer once it exceeds this threshold</translation>
+        <source>上限为不限时无需自动清理</source>
+        <translation>No auto-cleanup needed while the limit is unlimited</translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <location line="+109"/>
+        <source>更新与回滚</source>
+        <translation>Update &amp; Rollback</translation>
+    </message>
+    <message>
+        <location line="-108"/>
+        <source>以下策略控制系统升级失败时的回滚与清理流程。</source>
+        <translation>These policies control rollback and cleanup when a system upgrade fails.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>失败时回滚到升级前状态，避免系统无法启动</source>
+        <translation>Rolls back to the pre-upgrade state on failure to prevent an unbootable system</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>回滚前备份清理</source>
+        <translation>Pre-Rollback Backup Cleanup</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>还原前自动创建回滚前备份；回滚成功后按所选方式清理</source>
+        <translation>A pre-rollback backup is created before restoring, and cleaned up per the chosen policy after a successful rollback</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>手动清理（默认）</source>
+        <translation>Manual cleanup (default)</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>重启 3 次正常后自动清理</source>
+        <translation>Auto-cleanup after 3 successful reboots</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>保留旧部署数</source>
+        <translation>Retained Deployments</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>升级/回滚时保留的旧系统部署数量（默认 1，新备份自动覆盖旧备份）</source>
+        <translation>Number of old system deployments kept during upgrade/rollback (default 1; a new backup automatically overwrites the old one)</translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>以下参数写入系统配置文件，需管理员权限；修改后点击「保存系统参数」生效。</source>
+        <translation>These parameters are written to the system configuration file and require administrator privileges; changes take effect after clicking Save System Parameters.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>有未保存修改</source>
+        <translation>Unsaved Changes</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>修改层超过该阈值时自动刷新合并到系统层；建议 200–1000 MiB</source>
+        <translation>When the modification layer exceeds this threshold, it is automatically flushed and merged into the system layer; recommended 200-1000 MiB</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -1445,22 +1851,32 @@
         <translation> MiB</translation>
     </message>
     <message>
-        <location line="+77"/>
+        <location line="+9"/>
+        <source>配置文件</source>
+        <translation>Configuration File</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>保存系统参数的目标文件</source>
+        <translation>Target file where system parameters are saved</translation>
+    </message>
+    <message>
+        <location line="+81"/>
         <source>正在读取配置...</source>
         <translation>Reading configuration…</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+51"/>
         <source>正在保存系统参数...</source>
         <translation>Saving system parameters…</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+12"/>
         <source>系统参数已保存</source>
         <translation>System parameters saved</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>保存失败: %1</source>
         <translation>Save failed: %1</translation>
     </message>
@@ -1468,7 +1884,7 @@
 <context>
     <name>ProtectionPage</name>
     <message>
-        <location filename="../src/pages/protectionpage.cpp" line="+37"/>
+        <location filename="../src/pages/protectionpage.cpp" line="+35"/>
         <source>系统保护</source>
         <translation>System protection</translation>
     </message>
@@ -1478,85 +1894,35 @@
         <translation>Manage Panshi read-only protection (writable layer)</translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+38"/>
+        <source>总开关：开启或关闭磐石系统保护</source>
+        <translation>Master switch: enables or disables Panshi system protection</translation>
+    </message>
+    <message>
+        <location line="+11"/>
         <source>说明</source>
         <translation>Description</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>磐石系统将核心目录(/usr 等)以只读方式挂载, 防止误操作或恶意软件破坏系统。
-开启“可写层”将解除只读保护(适合开发调试), 关闭后恢复保护。
-注意: 开启可写层后系统将拒绝执行快照还原。</source>
-        <translation>Panshi mounts core directories (such as /usr) read-only to prevent misoperations or malware from damaging the system. Enabling the “writable layer” lifts read-only protection (suitable for development and debugging); turning it off restores protection. Note: while the writable layer is on, the system refuses to perform snapshot rollback.</translation>
+开启“可写层”将解除只读保护(适合开发调试), 关闭后恢复保护。</source>
+        <translation>The Panshi system mounts core directories (such as /usr) read-only to prevent accidental operations or malware from damaging the system.
+Enabling the &quot;writable layer&quot; removes the read-only protection (suitable for development and debugging); turning it off restores the protection.</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <location line="+64"/>
+        <location line="+5"/>
+        <source>注意: 开启可写层后系统将拒绝执行快照还原。</source>
+        <translation>Note: while the writable layer is enabled, snapshot rollback is refused.</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <location line="+39"/>
         <source>保护开关</source>
         <translation>Protection switch</translation>
     </message>
     <message>
-        <location line="-64"/>
-        <source>永久开启或关闭磐石系统保护</source>
-        <translation>Permanently enable or disable Panshi system protection</translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>开启保护 (恢复只读)</source>
-        <translation>Enable protection (restore read-only)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>恢复核心目录只读挂载, 需要重启系统后生效</source>
-        <translation>Restore read-only mounting of core directories; takes effect after reboot</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>开启保护</source>
-        <translation>Enable protection</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>关闭保护（高级操作）</source>
-        <translation>Disable protection (advanced)</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>关闭保护后核心目录将可写, 且系统拒绝执行快照还原。请仅在开发调试时短期使用。</source>
-        <translation>After disabling, core directories become writable and the system refuses snapshot rollback. Use it only for short-term development and debugging.</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>永久关闭保护 (开启可写层)</source>
-        <translation>Disable protection permanently (enable writable layer)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>重启后仍保持可写, 需手动再次开启保护</source>
-        <translation>Stays writable after reboot; you must re-enable protection manually</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>永久关闭保护</source>
-        <translation>Disable protection permanently</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>临时关闭保护 (重启后自动恢复)</source>
-        <translation>Disable protection temporarily (restored after reboot)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>仅本次开机生效, 重启后自动恢复只读保护</source>
-        <translation>Effective for this boot only; read-only protection is restored after reboot</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>临时关闭保护</source>
-        <translation>Disable protection temporarily</translation>
-    </message>
-    <message>
-        <location line="+13"/>
+        <location line="-11"/>
         <location line="+12"/>
         <source>磐石功能</source>
         <translation>Panshi features</translation>
@@ -1571,65 +1937,22 @@
         <source>正在读取保护状态...</source>
         <translation>Reading protection status…</translation>
     </message>
-    <message>
-        <location line="+34"/>
-        <source>开启只读保护</source>
-        <translation>Enable read-only protection</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>关闭只读保护(开启可写层)</source>
-        <translation>Disable read-only protection (enable writable layer)</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>
-
-本次为临时关闭, 重启后系统将自动恢复只读保护。</source>
-        <translation>This is temporary; read-only protection will be restored automatically after reboot.</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>确定要%1吗？
-此操作需要重启后生效。%2</source>
-        <translation>Do you want to %1? This takes effect after reboot. %2</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>正在设置保护状态...</source>
-        <translation>Setting protection status…</translation>
-    </message>
-    <message>
-        <location line="+13"/>
-        <source>设置成功，请重启系统使设置生效。</source>
-        <translation>Set successfully. Reboot for it to take effect.</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>设置失败，请查看详情了解具体原因。</source>
-        <translation>Setting failed. See the details for the specific reason.</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>完整输出</source>
-        <translation>Full output</translation>
-    </message>
 </context>
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../src/main.cpp" line="+84"/>
+        <location filename="../src/main.cpp" line="+169"/>
         <location line="+1"/>
         <source>磐石设置</source>
         <translation>Panshi Manager</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+8"/>
         <source>Deepin 25 磐石系统管理工具</source>
         <translation>Deepin 25 immutable system management tool</translation>
     </message>
     <message>
-        <location filename="../src/pages/common.h" line="+355"/>
+        <location filename="../src/pages/common.h" line="+356"/>
         <location line="+4"/>
         <location line="+1"/>
         <location line="+20"/>
@@ -1642,7 +1965,7 @@
         <translation>Copy command</translation>
     </message>
     <message>
-        <location filename="../src/pages/aboutpage.cpp" line="+5"/>
+        <location filename="../src/pages/aboutpage.cpp" line="+4"/>
         <location filename="../src/pages/common.h" line="+16"/>
         <source>已复制</source>
         <translation>Copied</translation>
@@ -1658,8 +1981,8 @@
         <translation>Panshi Manager  </translation>
     </message>
     <message>
+        <location filename="../src/ui/confirmdialog.cpp" line="+106"/>
         <location filename="../src/pages/common.h" line="-276"/>
-        <location filename="../src/ui/confirmdialog.cpp" line="+99"/>
         <source>确定</source>
         <translation>OK</translation>
     </message>
@@ -1725,7 +2048,7 @@
         <translation>Disable protection</translation>
     </message>
     <message>
-        <location line="+29"/>
+        <location line="+32"/>
         <source>设置成功，请重启系统使设置生效。</source>
         <translation>Set successfully. Reboot for it to take effect.</translation>
     </message>
@@ -1740,33 +2063,12 @@
         <translation>Full output</translation>
     </message>
     <message>
-        <location filename="../src/ui/sidebar.cpp" line="+194"/>
+        <location filename="../src/ui/sidebar.cpp" line="+187"/>
         <source>主导航</source>
         <translation>Main navigation</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <location line="+4"/>
-        <source>搜索设置</source>
-        <translation>Search settings</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>输入设置名称可跳转到对应设置项</source>
-        <translation>Enter a setting name to jump to it</translation>
-    </message>
-    <message>
-        <location line="+15"/>
-        <source>设置搜索结果</source>
-        <translation>Setting search results</translation>
-    </message>
-    <message>
-        <location line="+204"/>
-        <source>未找到匹配的设置项</source>
-        <translation>No matching settings found</translation>
-    </message>
-    <message>
-        <location filename="../src/backend.cpp" line="+77"/>
+        <location filename="../src/backend.cpp" line="+79"/>
         <source>无法启动进程: %1</source>
         <translation>Cannot start process: %1</translation>
     </message>
@@ -1777,16 +2079,17 @@
     </message>
     <message>
         <location line="+38"/>
+        <location line="+828"/>
         <source>命令执行失败</source>
         <translation>Command execution failed</translation>
     </message>
     <message>
-        <location line="+491"/>
+        <location line="-312"/>
         <source>无法写入临时配置文件</source>
         <translation>Cannot write temporary config file</translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+162"/>
         <source>无法写入临时状态文件</source>
         <translation>Cannot write temporary state file</translation>
     </message>
@@ -1796,7 +2099,37 @@
         <translation>Failed to install systemd service</translation>
     </message>
     <message>
-        <location filename="../src/disk/scanner.cpp" line="-150"/>
+        <location line="+73"/>
+        <source>已取消授权，未执行操作</source>
+        <translation>Authorization cancelled, no action taken</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>没有权限执行此操作</source>
+        <translation>Not authorized to perform this operation</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>身份验证失败，请检查密码后重试</source>
+        <translation>Authentication failed, please check your password and try again</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>密码错误，请重试</source>
+        <translation>Incorrect password, please try again</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>权限不足，无法执行此操作</source>
+        <translation>Insufficient permissions to perform this operation</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>命令执行超时</source>
+        <translation>Command execution timed out</translation>
+    </message>
+    <message>
+        <location filename="../src/disk/scanner.cpp" line="-246"/>
         <source>无法启动 df 进程</source>
         <translation>Cannot start df process</translation>
     </message>
@@ -1811,7 +2144,7 @@
         <translation>Cannot parse df output</translation>
     </message>
     <message>
-        <location filename="../src/pages/diskusagepage.cpp" line="-1629"/>
+        <location filename="../src/pages/diskusagepage.cpp" line="-2338"/>
         <source>打开位置</source>
         <translation>Open location</translation>
     </message>
@@ -1841,17 +2174,85 @@
         <translation>Fully off · stays off after reboot</translation>
     </message>
     <message>
-        <location filename="../src/pages/updatepage.cpp" line="+146"/>
+        <location filename="../src/pages/updatepage.cpp" line="+78"/>
+        <location line="+52"/>
+        <source>内核与驱动</source>
+        <translation>Kernel &amp; drivers</translation>
+    </message>
+    <message>
+        <location line="-46"/>
+        <location line="+46"/>
+        <source>桌面环境</source>
+        <translation>Desktop environment</translation>
+    </message>
+    <message>
+        <location line="-41"/>
+        <location line="+41"/>
+        <source>输入法与字体</source>
+        <translation>Input methods &amp; fonts</translation>
+    </message>
+    <message>
+        <location line="-37"/>
+        <location line="+38"/>
+        <source>系统库文件</source>
+        <translation>System libraries</translation>
+    </message>
+    <message>
+        <location line="-34"/>
+        <location line="+34"/>
+        <source>网络应用</source>
+        <translation>Network applications</translation>
+    </message>
+    <message>
+        <location line="-30"/>
+        <location line="+30"/>
+        <source>影音与图形</source>
+        <translation>Multimedia &amp; graphics</translation>
+    </message>
+    <message>
+        <location line="-22"/>
+        <location line="+23"/>
+        <source>开发环境</source>
+        <translation>Development tools</translation>
+    </message>
+    <message>
+        <location line="-20"/>
+        <location line="+20"/>
+        <source>游戏</source>
+        <translation>Games</translation>
+    </message>
+    <message>
+        <location line="-16"/>
+        <location line="+16"/>
+        <source>系统组件</source>
+        <translation>System components</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <location line="+11"/>
+        <source>工具与应用</source>
+        <translation>Tools &amp; applications</translation>
+    </message>
+    <message>
+        <location line="-10"/>
+        <location line="+10"/>
+        <source>其他</source>
+        <translation>Other</translation>
+    </message>
+    <message>
+        <location line="+342"/>
         <source>系统升级</source>
         <translation>System upgrade</translation>
     </message>
     <message>
-        <location filename="../src/ui/components.cpp" line="+587"/>
+        <location filename="../src/ui/components.cpp" line="+842"/>
         <source>关闭</source>
         <translation>Close</translation>
     </message>
     <message>
         <location line="+1"/>
+        <location filename="../tools/disknavprobe.cpp" line="+325"/>
+        <location line="+14"/>
         <source>关闭提示</source>
         <translation>Close notice</translation>
     </message>
@@ -1871,7 +2272,7 @@
         <translation>Settings</translation>
     </message>
     <message>
-        <location filename="../src/ui/aboutdialog.cpp" line="-358"/>
+        <location filename="../src/ui/aboutdialog.cpp" line="-369"/>
         <source>Deepin 25 磐石（immutable）系统管理工具</source>
         <translation>Deepin 25 Panshi (immutable) system management tool</translation>
     </message>
@@ -1897,6 +2298,106 @@
         <source>systemctl --user %1 执行超时</source>
         <translation>systemctl --user %1 timed out</translation>
     </message>
+    <message>
+        <location filename="../tools/diskshot.cpp" line="+169"/>
+        <source>条记录</source>
+        <translation> records</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <location line="+31"/>
+        <location filename="../tools/disknavprobe.cpp" line="-133"/>
+        <source>增长</source>
+        <translation>Growth</translation>
+    </message>
+    <message>
+        <location line="-27"/>
+        <location line="+35"/>
+        <location filename="../tools/disknavprobe.cpp" line="+1"/>
+        <source>排行</source>
+        <translation>Ranking</translation>
+    </message>
+    <message>
+        <location line="-19"/>
+        <location line="+42"/>
+        <location line="+36"/>
+        <location filename="../tools/disknavprobe.cpp" line="-103"/>
+        <source>磁盘分析表</source>
+        <translation>Disk analysis table</translation>
+    </message>
+    <message>
+        <location line="-3"/>
+        <source>较前一日变化</source>
+        <translation>Change vs. previous day</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>前一日暂无数据</source>
+        <translation>No data for the previous day</translation>
+    </message>
+    <message>
+        <location line="+38"/>
+        <source>净增长</source>
+        <translation>Net growth</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>容量预测</source>
+        <translation>Capacity Forecast</translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>预计</source>
+        <translation>Estimated</translation>
+    </message>
+    <message>
+        <location filename="../tools/disknavprobe.cpp" line="+9"/>
+        <location line="+178"/>
+        <source>系统盘</source>
+        <translation>System Disk</translation>
+    </message>
+    <message>
+        <location line="-86"/>
+        <source>构成</source>
+        <translation>Composition</translation>
+    </message>
+    <message>
+        <location line="+53"/>
+        <source>返回系统盘</source>
+        <translation>Back to system disk</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>返回上级</source>
+        <translation>Back</translation>
+    </message>
+    <message>
+        <location line="+51"/>
+        <source>增长：</source>
+        <translation>Growth:</translation>
+    </message>
+    <message>
+        <location filename="../tools/updateshot.cpp" line="+160"/>
+        <source>检查更新</source>
+        <translation>Check for updates</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <location line="+6"/>
+        <source>有可用更新</source>
+        <translation>Updates available</translation>
+    </message>
+    <message>
+        <location line="-5"/>
+        <location line="+6"/>
+        <source>已是最新</source>
+        <translation>Up to date</translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>待更新软件包</source>
+        <translation>Packages to update</translation>
+    </message>
 </context>
 <context>
     <name>ScanOverlay</name>
@@ -1909,7 +2410,7 @@
 <context>
     <name>SnapshotsPage</name>
     <message>
-        <location filename="../src/pages/snapshotspage.cpp" line="+90"/>
+        <location filename="../src/pages/snapshotspage.cpp" line="+102"/>
         <source>名称</source>
         <translation>Name</translation>
     </message>
@@ -1939,19 +2440,21 @@
         <translation>Actions</translation>
     </message>
     <message>
-        <location line="-11"/>
-        <location line="+112"/>
+        <location line="-10"/>
+        <location line="+117"/>
         <source>正在读取快照列表...</source>
         <translation>Reading snapshot list…</translation>
     </message>
     <message>
-        <location line="-94"/>
+        <location line="-98"/>
         <source>系统备份列表</source>
         <translation>System Backup List</translation>
     </message>
     <message>
-        <location line="+140"/>
-        <source>未启用</source><translation>Not enabled</translation></message>
+        <location line="+150"/>
+        <source>未启用</source>
+        <translation>Not enabled</translation>
+    </message>
     <message>
         <location line="+3"/>
         <source>手动</source>
@@ -1983,17 +2486,17 @@
         <translation>In progress</translation>
     </message>
     <message>
-        <location line="+4"/>
-        <source>备份数量上限: %1&#x3000;·&#x3000;当前 %2 个&#x3000;·&#x3000;回滚前安全备份: %3</source>
-        <translation>Backup limit: %1  ·  %2 currently  ·  Pre-rollback safety backup: %3</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="-13"/>
         <source>不限制</source>
         <translation>Unlimited</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+2"/>
+        <source>%1 个</source>
+        <translation>%1 backup(s)</translation>
+    </message>
+    <message>
+        <location line="+62"/>
         <source>%1
 描述: %2</source>
         <translation>%1
@@ -2068,12 +2571,12 @@ Exclusive objects: %2</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+104"/>
+        <location line="+108"/>
         <source>删除</source>
         <translation>Delete</translation>
     </message>
     <message>
-        <location line="-102"/>
+        <location line="-106"/>
         <source>系统初始备份受保护, 不可删除</source>
         <translation>The initial system backup is protected and cannot be deleted</translation>
     </message>
@@ -2093,7 +2596,7 @@ Exclusive objects: %2</translation>
         <translation>The previous operation is still running. Please try again shortly.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+17"/>
         <source>备份名称</source>
         <translation>Backup name</translation>
     </message>
@@ -2167,7 +2670,27 @@ Exclusive objects: %2</translation>
         <translation>Delete backup</translation>
     </message>
     <message>
+        <location line="-403"/>
+        <source>备份数量上限</source>
+        <translation>Backup count limit</translation>
+    </message>
+    <message>
         <location line="+1"/>
+        <source>当前数量</source>
+        <translation>Current count</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>回滚前安全备份</source>
+        <translation>Pre-rollback safe backup</translation>
+    </message>
+    <message>
+        <location line="+98"/>
+        <source>提示：悬停名称列可查看完整描述与用途；系统初始备份受磐石保护，不可删除。</source>
+        <translation>Tip: hover the name column to see the full description; the initial system backup is protected and cannot be deleted.</translation>
+    </message>
+    <message>
+        <location line="+304"/>
         <source>删除后该备份的增量数据将被释放，且无法恢复。</source>
         <translation>The incremental data of this backup will be released and cannot be recovered.</translation>
     </message>
@@ -2312,8 +2835,8 @@ Please disable the writable layer and restore read-only protection first.</trans
         <translation>Restore is ready. Restart the system manually later for it to take effect.</translation>
     </message>
     <message>
-        <location line="-483"/>
-        <location line="+226"/>
+        <location line="-491"/>
+        <location line="+234"/>
         <source>创建备份</source>
         <translation>Create backup</translation>
     </message>
@@ -2323,7 +2846,7 @@ Please disable the writable layer and restore read-only protection first.</trans
         <translation>Manual backup-</translation>
     </message>
     <message>
-        <location line="-239"/>
+        <location line="-247"/>
         <source>暂无备份</source>
         <translation>No backups yet</translation>
     </message>
@@ -2332,16 +2855,11 @@ Please disable the writable layer and restore read-only protection first.</trans
         <source>创建备份后可在系统出问题时还原到当前状态。系统初始备份由磐石自动创建，受保护、不可删除。</source>
         <translation>After creating a backup, you can restore the system to its current state if problems occur. The initial system backup is created automatically by Panshi; it is protected and cannot be deleted.</translation>
     </message>
-    <message>
-        <location line="+7"/>
-        <source>说明: 系统初始备份受磐石系统保护, 不可删除或重命名。回滚前备份带「回滚前」标识, 可在回滚成功后手动删除。备份描述已并入名称列, 悬停行首即可查看全文。</source>
-        <translation>Note: The initial system backup is protected by Panshi and cannot be deleted or renamed. Pre-rollback backups carry a “Pre-rollback” tag and can be deleted manually after a successful rollback. Backup descriptions are merged into the Name column; hover over the start of a row to see the full text.</translation>
-    </message>
 </context>
 <context>
     <name>UpdatePage</name>
     <message>
-        <location filename="../src/pages/updatepage.cpp" line="-113"/>
+        <location filename="../src/pages/updatepage.cpp" line="-318"/>
         <source>系统更新</source>
         <translation>System update</translation>
     </message>
@@ -2356,7 +2874,28 @@ Please disable the writable layer and restore read-only protection first.</trans
         <translation>Restart now</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
+        <source>更新检查</source>
+        <translation>Update check</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>检查系统是否有可用的更新</source>
+        <translation>Check whether updates are available</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>尚未检查更新，点击下方「检查更新」获取最新状态。</source>
+        <translation>Not checked yet. Click &quot;Check for updates&quot; below to get the latest status.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <location line="+99"/>
+        <source>未检查</source>
+        <translation>Not checked</translation>
+    </message>
+    <message>
+        <location line="-80"/>
         <source>更新说明</source>
         <translation>Update notes</translation>
     </message>
@@ -2366,15 +2905,7 @@ Please disable the writable layer and restore read-only protection first.</trans
         <translation>Panshi system upgrade features</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>· 升级前系统自动创建备份, 升级失败自动回滚到之前状态
-· 原子更新: 更新过程要么全部成功, 要么回退, 无需手动干预
-· 升级会创建新的系统部署, 旧部署按“最大备份部署数”策略保留
-· 升级完成需重启后进入新系统</source>
-        <translation>· A backup is created automatically before upgrading, and a failed upgrade rolls back automatically · Atomic update: the process either fully succeeds or reverts, with no manual intervention · Upgrading creates a new deployment; old deployments are kept per the “max backup deployments” policy · Reboot after upgrading to enter the new system</translation>
-    </message>
-    <message>
-        <location line="+9"/>
+        <location line="+16"/>
         <source>操作</source>
         <translation>Actions</translation>
     </message>
@@ -2394,27 +2925,143 @@ Please disable the writable layer and restore read-only protection first.</trans
         <translation>Clear download cache</translation>
     </message>
     <message>
-        <location line="+14"/>
-        <source>完整输出</source>
-        <translation>Full output</translation>
+        <location line="-22"/>
+        <source>自动备份与回滚</source>
+        <translation>Automatic backup and rollback</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="-12"/>
+        <source>待更新软件包</source>
+        <translation>Packages to update</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>按用途分组，便于了解更新内容</source>
+        <translation>Grouped by purpose, so you can see what will be installed</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>升级前系统自动创建备份，升级失败自动回滚到之前状态</source>
+        <translation>The system automatically creates a backup before upgrading and rolls back to the previous state if the upgrade fails</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>原子更新</source>
+        <translation>Atomic updates</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>更新过程要么全部成功，要么整体回退，无需手动干预</source>
+        <translation>Updates either fully succeed or fully roll back, with no manual intervention needed</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>部署保留策略</source>
+        <translation>Deployment retention policy</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>升级会创建新的系统部署，旧部署按「最大备份部署数」策略保留</source>
+        <translation>Upgrades create a new system deployment; old deployments are kept per the &quot;max backup deployments&quot; policy</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>重启生效</source>
+        <translation>Takes effect after reboot</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>升级完成后需重启进入新系统</source>
+        <translation>A reboot is required to enter the new system after the upgrade</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>更新详情</source>
+        <translation>Update details</translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>已是最新</source>
+        <translation>Up to date</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>有可用更新</source>
+        <translation>Updates available</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>检查失败</source>
+        <translation>Check failed</translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>可更新项：0（系统已是最新）</source>
+        <translation>Updates: 0 (system is up to date)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>可更新项：%1</source>
+        <translation>Updates: %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>可更新项：%1&#x3000;需下载：%2</source>
+        <translation>Updates: %1&#x3000;to download: %2</translation>
+    </message>
+    <message>
+        <location line="+50"/>
+        <source>%1 项</source>
+        <translation>%1 items</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <location line="+1"/>
         <source>正在检查更新...</source>
         <translation>Checking for updates…</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+31"/>
+        <source>系统已是最新版本，无需更新。</source>
+        <translation>The system is already up to date. No updates needed.</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>发现 %1 个可更新项。</source>
+        <translation>Found %1 available update(s).</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>发现 %1 个可更新项，需下载 %2 个。</source>
+        <translation>Found %1 available update(s), %2 to download.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>检查完成，未获取到更新摘要。</source>
+        <translation>Check complete, but no update summary was returned.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>检查完成</source>
         <translation>Check complete</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+22"/>
+        <source>检查更新失败</source>
+        <translation>Check for updates failed</translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>检查更新失败: %1</source>
         <translation>Check for updates failed: %1</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+0"/>
+        <source>未知错误</source>
+        <translation>Unknown error</translation>
+    </message>
+    <message>
+        <location line="+12"/>
         <source>将开始下载并升级系统。
 
 升级前系统会自动创建备份; 升级期间请勿关机或断电。
@@ -2442,7 +3089,7 @@ Please disable the writable layer and restore read-only protection first.</trans
         <translation>Upgrade failed: %1</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+13"/>
         <source>正在清理下载缓存...</source>
         <translation>Clearing download cache…</translation>
     </message>
@@ -2524,27 +3171,29 @@ Please disable the writable layer and restore read-only protection first.</trans
 <context>
     <name>VersionManagementPage</name>
     <message>
-        <location filename="../src/pages/versionpage.cpp" line="+42"/>
+        <location filename="../src/pages/versionpage.cpp" line="+49"/>
         <source>备份与版本</source>
         <translation>Backups &amp; versions</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>系统备份快照与已装系统版本管理</source>
-        <translation>Manage system backup snapshots and installed system versions</translation>
-    </message>
-    <message>
         <location line="-14"/>
-        <source>备份快照</source>
-        <translation>Snapshots</translation>
+        <location line="+148"/>
+        <source>系统快照</source>
+        <translation>System snapshots</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>系统版本</source>
-        <translation>System versions</translation>
+        <location line="-147"/>
+        <location line="+149"/>
+        <source>系统部署实例</source>
+        <translation>System deployments</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="-135"/>
+        <source>系统快照是可还原的备份点，系统部署实例是可启动的系统</source>
+        <translation>Restorable backup points; deployments are bootable systems</translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>刷新</source>
         <translation>Refresh</translation>
     </message>
@@ -2552,6 +3201,91 @@ Please disable the writable layer and restore read-only protection first.</trans
         <location line="+7"/>
         <source>创建备份</source>
         <translation>Create backup</translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>「系统快照」和「系统部署实例」有什么区别？</source>
+        <translation>How do &quot;System snapshots&quot; and &quot;System deployments&quot; differ?</translation>
+    </message>
+    <message>
+        <location line="+76"/>
+        <source>这里记录的是「可还原的备份点」：可以创建、删除，也可以把系统还原回它记录的那一刻。</source>
+        <translation>This tab lists restorable backup points: you can create and delete them, and roll the system back to the moment a snapshot records.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>这里列出的是「一整套可启动的系统」：只能删除以释放磁盘空间，删除后该系统无法再启动。</source>
+        <translation>This tab lists complete bootable systems: they can only be deleted to free disk space, and once deleted that system can no longer boot.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>对比项</source>
+        <translation>Aspect</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>是什么</source>
+        <translation>What it is</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>怎么来的</source>
+        <translation>Where it comes from</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>能做什么</source>
+        <translation>What you can do</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>删除后</source>
+        <translation>After deletion</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>可还原的备份点，只记录系统层的差异</source>
+        <translation>A restorable backup point; stores only the differences of the system layer</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>你手动创建，或系统初始化时自动生成</source>
+        <translation>Created by you manually, or automatically at system initialization</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>可以创建、删除，也可以还原回它记录的时刻</source>
+        <translation>Can be created, deleted, and rolled back to the moment it records</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>只是少一个还原点，系统照常运行</source>
+        <translation>You just lose one restore point; the system keeps running</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>一整套可启动的系统，占用完整磁盘空间</source>
+        <translation>A complete bootable system; occupies its full disk space</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>系统升级、回滚时自动生成</source>
+        <translation>Generated automatically on system upgrade or rollback</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>只能删除，用来释放磁盘空间</source>
+        <translation>Can only be deleted, to free disk space</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>该系统将无法再启动</source>
+        <translation>That system will no longer be bootable</translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>两者关系：还原一个快照后，系统会自动生成一个新的部署实例（带「回滚前」标记），可在「系统部署实例」页看到它。</source>
+        <translation>How they relate: after you roll back a snapshot, the system automatically creates a new deployment (marked &quot;Pre-rollback&quot;), which you can see in the &quot;System deployments&quot; tab.</translation>
     </message>
 </context>
 </TS>

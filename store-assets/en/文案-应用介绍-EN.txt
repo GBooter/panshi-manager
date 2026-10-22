@@ -1,0 +1,18 @@
+Panshi Manager is the graphical control center for the immutable system of deepin 25. Built with C++17 / Qt6 / DTK6, it fits the deepin desktop, follows the system light / dark theme and speaks Chinese and English.
+
+Overview
+Protection state, writable layer, snapshots, repository usage and system info on one screen.
+
+Disk usage
+A background service draws a 7-day to 1-year timeline of daily usage; abnormal growth triggers alerts and drills down to the exact folder; a forecast estimates when the disk fills up.
+
+System protection
+Read-only and writable-layer state with one switch; core directories stay read-only against damage or malware.
+
+Backups & versions
+Create, delete and restore snapshots with a safety backup before each restore; failed upgrades roll back automatically.
+
+Updates & policies
+Atomic upgrades, cache cleanup and retention policies applied immediately.
+
+For deepin 25 users who prefer a graphical way to manage protection, backups and disk space.

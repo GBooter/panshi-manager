@@ -18,6 +18,7 @@
 #include <QAbstractButton>
 #include <QApplication>
 #include <QClipboard>
+#include <QFileInfo>
 #include <QPainter>
 #include <QHBoxLayout>
 #include <QTimer>
@@ -412,6 +413,54 @@ inline QWidget *makeCommandRow(const QString &cmd, const QString &comment,
                                      PanshiUi::Semantic::Muted),
                  0, Qt::AlignVCenter);
     h->addWidget(makeCopyButton(cmd, w));
+    return w;
+}
+
+/**
+ * 特性说明行：小图标 + 标题 + 说明（更新说明 / 技术参考等长文本区块用）。
+ *
+ * 图标取「应用自带 nav SVG 优先、主题图标兜底」——与侧栏 navIcon 同策略：
+ * 自带 SVG（:/icons/nav/<key>.svg）任何系统/主题下完全一致，避免 DCI 图标
+ * 库里没有对应语义时回落到灰色标准图标。
+ * 文本列弹性占位；说明开 wordWrap，窄窗口优雅折行而非撑爆行宽。
+ */
+inline QWidget *featureRow(const QString &iconKey, const QString &title, const QString &desc,
+                           QWidget *parent = nullptr)
+{
+    auto *w = new QWidget(parent);
+    auto *h = new QHBoxLayout(w);
+    h->setContentsMargins(0, 0, 0, 0);
+    h->setSpacing(PanshiUi::Space::M);
+
+    QIcon ic;
+    const QString bundled = QStringLiteral(":/icons/nav/%1.svg").arg(iconKey);
+    if (QFileInfo::exists(bundled))
+        ic = QIcon(bundled);
+    else
+        ic = themedIcon(iconKey);
+    if (ic.isNull())
+        ic = themedIcon(QStringLiteral("dialog-information"));
+
+    auto *icon = new DLabel(w);
+    icon->setFixedSize(36, 36);
+    icon->setAlignment(Qt::AlignCenter);
+    icon->setPixmap(ic.pixmap(20, 20));
+    h->addWidget(icon, 0, Qt::AlignTop);
+
+    auto *tl = new QVBoxLayout;
+    tl->setSpacing(PanshiUi::Space::XS);
+    auto *t = new DLabel(title);
+    t->setObjectName(QStringLiteral("panshiRowLabel"));
+    t->setForegroundRole(DPalette::TextTitle);
+    DFontSizeManager::instance()->bind(t, DFontSizeManager::T5);
+    auto *d = new DLabel(desc);
+    d->setObjectName(QStringLiteral("panshiRowDesc"));
+    d->setForegroundRole(DPalette::TextTips);
+    d->setWordWrap(true);
+    DFontSizeManager::instance()->bind(d, DFontSizeManager::T6);
+    tl->addWidget(t);
+    tl->addWidget(d);
+    h->addLayout(tl, 1);
     return w;
 }
 
