@@ -1,21 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  系统更新 —— 环形箭头（刷新/检查更新）
-
-  为什么不用「向上箭头」：那正是本次故障里回落出来的灰色小箭头形状。
-  换成环形箭头，既避开「下载」隐喻（已留给直觉），也更符合
-  「检查更新 → 有则下载」的实际语义。
-  坐标说明：圆心 (64,64)、半径 34；弧从 315° 顺时针扫 315° 到 270°，
-  缺口留在右上角，箭头在弧的末端（顶��）朝 +x 方向。
+  单色 outline 源图（2026-10-24 侧栏改线性图标风格）。
+  ⚠️ 颜色契约：本文件只画形状（纯黑），运行时由 sidebar.cpp 的
+     delegate 按语义染色（选中=Accent，常规=Normal 正文色）。
+     往本文件里加彩色会让染色后仍残留固定色相 —— 不要加。
 -->
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="cycleBody" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3FDCC6"/>
-      <stop offset="1" stop-color="#0C9A8C"/>
-    </linearGradient>
-  </defs>
-  <path d="M88 40 A 34 34 0 1 1 64 30" fill="none" stroke="url(#cycleBody)"
-        stroke-width="17" stroke-linecap="round"/>
-  <path d="M64 12 L90 30 L64 48 Z" fill="#0C9A8C"/>
+
+  <g fill="none" stroke="#000000" stroke-width="9"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M84 27 A42 42 0 1 1 44 27"/>
+  </g>
+  <path d="M58 20 L48 34 L40 20 Z" fill="#000000"/>
 </svg>

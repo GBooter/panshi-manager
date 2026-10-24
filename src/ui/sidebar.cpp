@@ -9,6 +9,7 @@
 #include <QAbstractItemView>
 #include <QFileInfo>
 #include <QFontMetrics>
+#include <QPixmap>
 #include <QPainter>
 #include <QStandardItemModel>
 #include <QStyleOption>
@@ -48,6 +49,10 @@ constexpr int kNavFallbackRole = Qt::UserRole + 22; // QString：备选图标名
  *   库里的单色 symbolic 浅底上是深灰、深底上是浅灰，**两边都缺色彩锚点**，
  *   扫视侧栏时辨识度很低。彩色版有稳定色相，识别度显著提升。
  *
+ *   ⚠️ 2026-10-24 侧栏改线性图标风格后：自带 SVG 改为「单色 outline 源图」
+ *   （纯黑，颜色由 delegate 现染，见 tintedPixmap()），7 个语义全部有自带文件，
+ *   本条 DCI 链实际已不再命中，保留只为「自带文件被删」时的兜底。
+ *
  * 完整回落链（任一级缺失都还有下一级，保证任何环境下都有图）：
  *   1. 自带 SVG → 2. 彩色首选名 → 3. 彩色备选名 → 4. 单色同名 → 5. QStyle 标准图标
  */
@@ -78,6 +83,10 @@ QIcon navIcon(const QString &name, const QString &fallbackName)
     }
     return QApplication::style()->standardIcon(QStyle::SP_FileDialogNewFolder);
 }
+
+// 图标染色统一用 PanshiUi::tintedPixmap()（2026-10-24 提到 components 层，
+// 侧栏 delegate 与按钮图标共用一份实现；原命名空间内的私有副本已删除，
+// 设计说明见 components.h）。
 
 class SidebarDelegate : public QStyledItemDelegate
 {
@@ -130,16 +139,21 @@ public:
         // 图标 20px（Size::Icon）：从 16px 提上来的原因见 sizeHint() 注释 ——
         // 用户反馈 16px 在侧栏里不易识别，20px 是「明显变大但不挤压文字」的上限
         // （再大到 24px 需要行高 48，一屏能见的导航项会少两个）。
+        //
+        // 2026-10-24 线性图标风格：SVG 是纯黑单色源图，颜色在这里现染 ——
+        //   选中 = Accent（与文字同色，图标+文字一起高亮，对齐参考设计）；
+        //   常规 = Normal（正文色：亮色深灰/暗色浅灰，跟随 DPalette）。
+        // 恒用「 Normal 语义 + 自染」而不给 QIcon 传 Selected 状态的原因
+        // 见 tintedPixmap() 注释（主题会整图替换 Selected，颜色失控）。
         const QIcon ic = idx.data(Qt::DecorationRole).value<QIcon>();
         const QRect iconRect(r.left() + Space::M,
                              r.center().y() - Size::Icon / 2,
                              Size::Icon, Size::Icon);
-        // ⚠️ 彩色图标 + Selected 模式会互相干扰：QIcon::Selected 会对图标做
-        // 状态替换（部分主题下直接把彩色图标压成单色），反而丢掉了颜色锚点。
-        // 故**恒用 QIcon::Normal** —— 靠「柔和底 + 文字高亮」表达选中，
-        // 不动图标本身（这正是选中态仍清晰的关键）。
-        ic.paint(p, iconRect, Qt::AlignCenter, QIcon::Normal,
-                 opt.state & QStyle::State_Enabled ? QIcon::On : QIcon::Off);
+        const QColor iconColor = selected ? semanticColor(Semantic::Accent)
+                                          : semanticColor(Semantic::Normal);
+        const QPixmap iconPx = tintedPixmap(ic, iconRect.size(), iconColor);
+        if (!iconPx.isNull())
+            p->drawPixmap(iconRect, iconPx);
 
         // 文字：选中 = Highlight（语义 Accent），常规 = TextTitle（语义 Normal）
         p->setFont(DFontSizeManager::instance()->get(DFontSizeManager::T6));
@@ -205,20 +219,24 @@ PanshiSidebar::PanshiSidebar(QWidget *parent)
     // ⚠️ 原先装在 m_search->lineEdit() 与 m_results 上的 eventFilter
     // （搜索态 ↑↓/Esc 键盘导航）已随搜索功能一并移除。
 
-    // ---- 主题切换：重查图标 + 强制重绘（2026-10-03 用户反馈修）----
+    // ---- 主题切换：强制全量重绘（2026-10-03 用户反馈修；2026-10-24 简化）----
     //
     // 症状（用户描述）：「切换暗色时有时不会变」「图标也没法看见」。
-    // 两个根因，本处一并解决：
+    // 两个根因，历史解法与现状：
     //
     // ① **图标不跟随主题**：`DIconTheme::findQIcon()` 返回的 QIcon 在**构造时**
     //    就把当前主题的资源解析好了，存在模型里之后**不会因主题切换而重新解析**
     //    （DTK 官方文档「主题切换时的图标更新」一节要求手动重查）。
-    //    → 必须重查并重写回模型。
+    //    → 原先靠 rebuildIcons 重查并重写回模型。
+    //    ⚠️ 2026-10-24 起**颜色已不再依赖重查**：自带 SVG 改为单色源图，
+    //    颜色由 delegate 在 paint 时按 appPalette() 现染（见 tintedPixmap()），
+    //    主题切换天然跟随。rebuildIcons 现在只为「自带文件被删、回落到 DCI」
+    //    这条兜底路径保留（qrc 内的文件不会因主题变化，但兜底图标会）。
     //
     // ② **delegate 不重绘**：侧栏是自绘（`SidebarDelegate::paint` 走
     //    `appPalette()` 实时取色，本身是对的），但 QListView 在调色板替换后
     //    未必会主动重绘全部行 → 表现为「有时不变」（部分行变了、部分没变）。
-    //    → 显式 `viewport()->update()` 强制全量重绘。
+    //    → 显式 `viewport()->update()` 强制全量重绘（**这条仍是主路径**）。
     //
     // 挂 `applicationPaletteChanged` 而非 `themeTypeChanged`：前者在新调色板
     // 就位后才发（main.cpp 的注释已详述该时序差），两个切换方向都稳。

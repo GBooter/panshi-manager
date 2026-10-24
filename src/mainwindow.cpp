@@ -125,47 +125,37 @@ void MainWindow::initSidebar()
     //  - 标题栏已承载应用名，侧栏不再重复「磐石设置 / 磐石系统管理」标题块；
     //  - 「基于 OSTree」等实现细节归关于页，不再占据侧栏脚注；
     //  - 导航项带主题图标，名称用用户语言（磁盘空间/备份与版本/策略与设置）。
+    //
+    // ---- 2026-10-24：侧栏改「线性图标 + 平铺」风格（对齐参考设计）----
+    //
+    // ① **去掉分组标题**（原「概览/系统维护/设置」三组）：参考设计
+    //    （中州韵输入法安装器）侧栏为无分组平铺列表，7 项一屏放得下，
+    //    分组标题在只有 7 项时只增加视觉层级、不增加信息量。
+    //    PanshiSidebar::beginGroup() 本身保留（API 未删，恢复分组时接回）。
+    //
+    // ② **图标改单色线性**：原 4 个自带 SVG 是彩色实心、3 个走 DCI 彩色，
+    //    选中态只染文字不染图标。现 7 项全部改用自带**单色 outline** SVG
+    //    （data/icons/nav/*.svg，第一个参数即 qrc 键），颜色由 delegate
+    //    在绘制时现染（选中=Accent、常规=正文色），图标文字一起高亮。
+    //    自带的好处不变：任何系统 / 任何图标主题 / 亮暗两套都完全一致，
+    //    且不依赖 DConfig —— 顺带把原走 DCI 的 3 项（总览/磁盘空间/
+    //    策略与设置）也从「图标主题依赖」里解放出来。
+    //
+    // ⚠️ 历史教训保留（2026-10-04 彩色图标时期）：判图标不能只看饱和度，
+    //    「大面积白底 + 少量高饱和 accent」会被 S90 骗过（实测 S90=0.94
+    //    但 20px 下几乎不可见）。线性图标时代的对应判据（墨迹覆盖率 +
+    //    图标间差异度）已改由探针 src/tools/navshot.cpp 守着。
     m_navSidebar = new PanshiUi::PanshiSidebar(m_sidebarWidget);
-    //
-    // ---- 侧栏图标（2026-10-04 重做）----
-    //
-    // 原先 7 个名字里有 **5 个在 DCI 图标库里根本不存在**
-    // （security-high / object-locked / document-save(-as) /
-    //   software-update-available / system-upgrade / go-home / help-about），
-    // DIconTheme 返回空 QIcon → navIcon() 一路回落到 QStyle 标准图标，
-    // 渲染出来就是用户截图里那两个**灰色细线小箭头**（↓ 备份、↑ 更新）。
-    // 只有 drive-harddisk 与 preferences-system 真实存在 ——
-    // 这正好解释了截图里「只有磁盘空间是彩色的」。
-    //
-    // 换库图标后仍不满意（多为单色细线 / 大面积白底，20px 下等于看不见），
-    // 故其中 4 项改为**应用自带 SVG**（data/icons/nav/*.svg，键即下表的第一个参数）：
-    //   系统保护 shield-check     盾牌+对勾    蓝
-    //   备份与版本 layers-snapshot 三层堆叠     琥珀
-    //   系统更新 cycle-update     环形箭头     青绿
-    //   关于     info-badge       圆角方章+i   靛蓝
-    // 自带的好处：任何系统 / 任何图标主题 / 亮暗两套都完全一致，且不依赖 DConfig。
-    // 剩余 3 项（总览/磁盘空间/策略与设置）继续用 DCI 彩色图标 ——
-    // 它们在库里真实存在且 20px 下清晰（实测彩占比 95%~100%）。
-    //
-    // ⚠️ 选图标的判据不能只看饱和度：只看 HSV 的 S 分位 90 会被
-    // 「大面积白底 + 少量高饱和 accent」的图标骗过去（实测某图标 S90=0.94
-    // 但彩占比仅 30%、明度 0.83，20px 下几乎不可见）。必须同时看
-    // **彩占比**（着色像素 / 全部不透明像素）。探针 src/tools/navshot.cpp 守着这条。
-    m_navSidebar->beginGroup(tr("概览"));
     m_navSidebar->addItem(QStringLiteral("deepin-system-monitor"), QStringLiteral("deepin-home"),
                           tr("总览"), int(PageId::Overview));
-    m_navSidebar->beginGroup(tr("系统维护"));
     m_navSidebar->addItem(QStringLiteral("drive-harddisk"), QStringLiteral("deepin-diskmanager"),
                           tr("磁盘空间"), int(PageId::DiskUsage));
-    // 这 4 项用**自带 SVG**（第一个参数即 qrc 里的键，见 sidebar.cpp::navIcon
-    // 「自带 SVG 优先」）：库里没有对应语义的彩色图标，硬用库图标只会回落成灰箭头。
     m_navSidebar->addItem(QStringLiteral("shield-check"), QStringLiteral("deepin-defender"),
                           tr("系统保护"), int(PageId::Protection));
     m_navSidebar->addItem(QStringLiteral("layers-snapshot"), QStringLiteral("application-x-archive"),
                           tr("备份与版本"), int(PageId::BackupVersion));
     m_navSidebar->addItem(QStringLiteral("cycle-update"), QStringLiteral("upgrade-tool"),
                           tr("系统更新"), int(PageId::Update));
-    m_navSidebar->beginGroup(tr("设置"));
     m_navSidebar->addItem(QStringLiteral("preferences-system"), QStringLiteral("deepin-home"),
                           tr("策略与设置"), int(PageId::Policy));
     m_navSidebar->addItem(QStringLiteral("info-badge"), QStringLiteral("dialog-information"),

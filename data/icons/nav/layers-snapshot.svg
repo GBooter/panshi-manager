@@ -1,25 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  备份与版本 —— 三层堆叠快照
-
-  为什么用「层叠」而不是「箱子 + 向下箭头」：
-  · 向下箭头是「下载/安装」的通用符号，而**系统更新**已经用了箭头语义；
-    两个图标都用箭头就失去了区分度，「快速扫视」的目标直接落空。
-  · 层叠是「多版本 / 快照 / 历史」最通用的视觉隐喻（OSTree commit、备份时间线
-    都是层），且 20px 下三条粗横条的辨识度极高，不依赖任何细节。
-  · 琥珀橙：与蓝（保护）、青绿（更新）都拉开距离，且和「磁盘」的绿不同色系。
-  · ⚠️ 三条**等宽**横条在 20px 下会被认成**汉堡菜单按钮**（首版就是这么画错的，
-    渲染出来才发现）。改成**宽度递减**（84/68/52）后有了明确的「收拢的堆叠」方向感，
-    与汉堡的等宽对称形态一眼可辨。
+  单色 outline 源图（2026-10-24 侧栏改线性图标风格）。
+  ⚠️ 颜色契约：本文件只画形状（纯黑），运行时由 sidebar.cpp 的
+     delegate 按语义染色（选中=Accent，常规=Normal 正文色）。
+     往本文件里加彩色会让染色后仍残留固定色相 —— 不要加。
 -->
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="stackBody" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFC65C"/>
-      <stop offset="1" stop-color="#F0871A"/>
-    </linearGradient>
-  </defs>
-  <rect x="22" y="20" width="84" height="24" rx="12" fill="url(#stackBody)"/>
-  <rect x="30" y="52" width="68" height="24" rx="12" fill="url(#stackBody)"/>
-  <rect x="38" y="84" width="52" height="24" rx="12" fill="url(#stackBody)"/>
+
+  <g fill="none" stroke="#000000" stroke-width="9"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 18 L106 42 L64 66 L22 42 Z"/>
+    <path d="M22 64 L64 88 L106 64"/>
+  </g>
 </svg>

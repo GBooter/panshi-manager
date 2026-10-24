@@ -3,10 +3,14 @@
   应用内嵌图标资源。
 
   为什么要自带 SVG 而不全都走 DIconTheme：
-  2026-10-04 侧栏图标故障的根因是「DCI 图标库里没有对应语义的彩色图标」，
-  DIconTheme 返回空 → 回落到 QStyle 灰色标准图标。四个语义（保护/备份/更新/关于）
-  在库里要么缺失、要么是单色细线、要么是大面积白底（20px 下看不见）。
-  自带 SVG 才能保证：**任何系统、任何图标主题、亮/暗两套下都完全一致**。
+  2026-10-04 侧栏图标故障的根因是「DCI 图标库里没有对应语义的图标」，
+  DIconTheme 返回空 → 回落到 QStyle 灰色标准图标。自带 SVG 才能保证：
+  **任何系统、任何图标主题、亮/暗两套下都完全一致**。
+
+  2026-10-24 侧栏改线性图标风格：nav/ 下 7 个文件全部为**单色 outline 源图**
+  （纯黑，只画形状）。颜色不由 SVG 决定 —— sidebar.cpp 的 delegate 在绘制时
+  按语义现染（选中=Accent、常规=正文色）。往这些文件里加彩色会让染色后
+  残留固定色相，不要加。
 
   命名与加载：nav/<key>.svg 由 sidebar.cpp 的 navIcon() 优先加载
   （先查 :/icons/nav/<key>.svg，没有才回落到 DIconTheme 的彩色优先链）。
@@ -14,9 +18,12 @@
 <RCC>
   <qresource prefix="/icons">
     <file>panshi.svg</file>
+    <file alias="nav/deepin-system-monitor.svg">nav/deepin-system-monitor.svg</file>
+    <file alias="nav/drive-harddisk.svg">nav/drive-harddisk.svg</file>
     <file alias="nav/shield-check.svg">nav/shield-check.svg</file>
     <file alias="nav/layers-snapshot.svg">nav/layers-snapshot.svg</file>
     <file alias="nav/cycle-update.svg">nav/cycle-update.svg</file>
+    <file alias="nav/preferences-system.svg">nav/preferences-system.svg</file>
     <file alias="nav/info-badge.svg">nav/info-badge.svg</file>
   </qresource>
 </RCC>

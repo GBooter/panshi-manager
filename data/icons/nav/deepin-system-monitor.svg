@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  单色 outline 源图（2026-10-24 侧栏改线性图标风格）。
+  ⚠️ 颜色契约：本文件只画形状（纯黑），运行时由 sidebar.cpp 的
+     delegate 按语义染色（选中=Accent，常规=Normal 正文色）。
+     往本文件里加彩色会让染色后仍残留固定色相 —— 不要加。
+-->
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+
+  <g fill="none" stroke="#000000" stroke-width="9"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 66 L64 26 L108 66"/>
+    <path d="M32 55 V106 H96 V55"/>
+    <path d="M54 106 V82 H74 V106"/>
+  </g>
+</svg>

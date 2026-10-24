@@ -1,23 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  系统保护 —— 盾牌 + 对勾
-
-  设计取舍（侧栏 20px 是真实显示尺寸，形状必须「一眼可辨」而不是「细节精致」）：
-  · 用**实心剪影**而非「圆角方块 + 内部细图形」：后者在 20px 下内部只剩 ~12px，
-    细节（锁孔、钥匙齿）会糊成一团，实心剪影把 20px 全部用上。
-  · 对勾只 3 笔、末端 round，缩到 20px 仍是清晰的「✓」形。
-  · 蓝：与「策略与设置」的蓝齿轮靠**形状**区分（尖底盾 vs 圆环齿轮），
-    不靠色相硬凑。
+  单色 outline 源图（2026-10-24 侧栏改线性图标风格）。
+  ⚠️ 颜色契约：本文件只画形状（纯黑），运行时由 sidebar.cpp 的
+     delegate 按语义染色（选中=Accent，常规=Normal 正文色）。
+     往本文件里加彩色会让染色后仍残留固定色相 —— 不要加。
 -->
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="shieldBody" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#5AA2FF"/>
-      <stop offset="1" stop-color="#1B5FD0"/>
-    </linearGradient>
-  </defs>
-  <path d="M64 10 L108 32 V66 C108 94 88 112 64 122 C40 112 20 94 20 66 V32 Z"
-        fill="url(#shieldBody)"/>
-  <path d="M45 67 L59 81 L85 51" fill="none" stroke="#FFFFFF" stroke-width="14"
-        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g fill="none" stroke="#000000" stroke-width="9"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 12 L110 32 V66 C110 94 89 110 64 120 C39 110 18 94 18 66 V32 Z"/>
+    <path d="M44 66 L58 80 L86 50"/>
+  </g>
 </svg>

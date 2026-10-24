@@ -7,6 +7,8 @@
 #include "protectioncards.h"
 
 #include <DIconButton>
+#include <functional>
+#include <QAbstractButton>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QJsonObject>
@@ -36,6 +38,38 @@ QColor barColor(BarRole r)
     case BarRole::Track:  return pa.color(DPalette::ItemBackground);
     }
     return pa.color(DPalette::TextTips);
+}
+
+/**
+ * 给按钮装「跟随主题」的自带 SVG 图标（2026-10-24 修「按钮图标看不清」）。
+ *
+ * 背景：原实现用 Ui::themedIcon("document-save" / "system-software-update"
+ * / "view-refresh" / "security")—— 前三个名字**在 DCI 图标库里不存在**
+ * （2026-10-24 审计，含系统 ostree 部署镜像），一路回落到 QStyle 标准图标：
+ * 尺寸只有样式默认的 12~16px、灰色细线，白底按钮上几乎看不见
+ * （用户截图实录）。security 虽在库里，但只有 flow 主题单色 webp，同样发虚。
+ *
+ * 修法（与侧栏同一套机制）：
+ *   ① 改用自带单色 outline SVG（data/icons/nav/*.svg，纯黑源图），
+ *      形状在 20px 下清晰，且与侧栏同图形——「备份与版本/系统更新/系统保护」
+ *      一个语义一个 glyph，全应用一致；
+ *   ② 颜色由 tintedSvgIcon 现染：建议键（蓝底）用白，常规键用正文色；
+ *   ③ 显式 setIconSize(20)——DTK 按钮默认只给 12px，不设就白搭；
+ *   ④ pixmap 是快照：切主题后必须重染（iconBadge 同一课，2026-10-03），
+ *      故挂 applicationPaletteChanged；固定色（白）重染结果相同，无害。
+ */
+void setSvgButtonIcon(QAbstractButton *btn, const QString &name,
+                      const std::function<QColor()> &colorFn, int px = Size::Icon)
+{
+    const QSize sz(px, px);
+    auto apply = [btn, name, sz, colorFn] {
+        btn->setIcon(tintedSvgIcon(name, sz, colorFn()));
+        btn->setIconSize(sz);
+    };
+    apply();
+    QObject::connect(DGuiApplicationHelper::instance(),
+                     &DGuiApplicationHelper::applicationPaletteChanged,
+                     btn, apply);
 }
 
 /**
@@ -168,7 +202,10 @@ OverviewPage::OverviewPage(MainWindow *win)
     headLay->addWidget(Ui::pageHeader(tr("总览"), tr("磐石系统运行状态一览"),
                                       QStringLiteral("utilities-system-monitor")), 1);
     auto *refreshBtn = new DIconButton(headRow);
-    refreshBtn->setIcon(Ui::themedIcon(QStringLiteral("view-refresh"), QStyle::SP_BrowserReload));
+    // view-refresh 同样不在 DCI 库 → 原回落 QStyle 灰色小箭头（12px）。
+    // 改自带 cycle-update.svg（环形箭头）现染正文色，20px。
+    setSvgButtonIcon(refreshBtn, QStringLiteral("cycle-update"),
+                     [] { return semanticColor(Semantic::Normal); });
     refreshBtn->setToolTip(tr("刷新状态"));
     refreshBtn->setFixedSize(36, 36);
     connect(refreshBtn, &DIconButton::clicked, this, [this] { refresh(); });
@@ -271,10 +308,13 @@ OverviewPage::OverviewPage(MainWindow *win)
     auto *secQuick = new PanshiSection(tr("快速操作"), tr("常用功能快捷入口"), scrollContent);
     auto *btns = new QHBoxLayout;
     btns->setSpacing(Space::M);
-    // 设计文档 P0 ⑤：图标 + 文字按钮。图标全部走 themedIcon（主题缺失回落
-    // QStyle 标准图标），语义分别为：备份=存档、更新=软件更新、保护=盾牌。
+    // 设计文档 P0 ⑤：图标 + 文字按钮。2026-10-24 起图标改用自带单色 SVG
+    // 现染（document-save / system-software-update / security 在 DCI 库
+    // 不存在或发虚，详见 setSvgButtonIcon 注释）：备份=层叠、更新=环形、
+    // 保护=盾牌，与侧栏同图形；建议键（蓝底）配白图标，其余配正文色。
     auto *bBackup = Ui::button(tr("立即创建备份"), true);
-    bBackup->setIcon(Ui::themedIcon(QStringLiteral("document-save"), QStyle::SP_DialogSaveButton));
+    setSvgButtonIcon(bBackup, QStringLiteral("layers-snapshot"),
+                     [] { return QColor(Qt::white); });   // DSuggestButton 前景恒白
     connect(bBackup, &DPushButton::clicked, this, [this] {
         // 落到「系统快照」子页后直接打开创建对话框（合成一次动作，用户无需再点）。
         // 三个动作都走 QMetaObject::invokeMethod：总览页不持有目标页头文件，
@@ -285,7 +325,8 @@ OverviewPage::OverviewPage(MainWindow *win)
         });
     });
     auto *bUpdate = Ui::button(tr("检查系统更新"));
-    bUpdate->setIcon(Ui::themedIcon(QStringLiteral("system-software-update"), QStyle::SP_BrowserReload));
+    setSvgButtonIcon(bUpdate, QStringLiteral("cycle-update"),
+                     [] { return semanticColor(Semantic::Normal); });
     connect(bUpdate, &DPushButton::clicked, this, [this] {
         m_win->gotoPage(PageId::Update, [this] {
             QMetaObject::invokeMethod(m_win->page(PageId::Update), "requestCheckUpdate",
@@ -293,7 +334,8 @@ OverviewPage::OverviewPage(MainWindow *win)
         });
     });
     auto *bProtect = Ui::button(tr("保护设置"));
-    bProtect->setIcon(Ui::themedIcon(QStringLiteral("security"), QStyle::SP_DriveHDIcon));
+    setSvgButtonIcon(bProtect, QStringLiteral("shield-check"),
+                     [] { return semanticColor(Semantic::Normal); });
     connect(bProtect, &DPushButton::clicked, this, [this] {
         // 跳保护页并定位高亮「开启保护（恢复只读）」行：总览的语境是
         // "保护可能没开，去看看"，直接指出该动哪一行比让用户自己找更省事。

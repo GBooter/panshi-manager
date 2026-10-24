@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(panshi-manager VERSION 1.0.6 LANGUAGES CXX)
+project(panshi-manager VERSION 1.0.7 LANGUAGES CXX)
 
 # 版本号单一来源：上方 project() 的 VERSION。
 # 编译期以字符串宏下发，供 QCoreApplication::setApplicationVersion() 使用，
@@ -590,5 +590,22 @@ add_executable(panshi-updateshot
 target_include_directories(panshi-updateshot PRIVATE src)
 target_compile_definitions(panshi-updateshot PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
 target_link_libraries(panshi-updateshot PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)
+
+# ---- 按钮图标可见性探针 panshi-quickaction（开发期专用，不安装）----
+# 2026-10-24 用户截图反馈「快速操作按钮里的图标看不清」。根因是图标名
+# （document-save / system-software-update / view-refresh）在 DCI 库不存在，
+# Ui::themedIcon 回落到 QStyle 灰色小图标。修法：改用自带单色 SVG 现染 +
+# 显式 iconSize(20)。本探针黑盒断言四按钮的「存在 / 尺寸 / 图形身份 /
+# 染色 / 可见墨迹」，并把总览页 hero/页头存在性作为诊断输出。
+# ⚠️ 判据有效性：修复前跑必须 FAIL（图形身份/染色），修复后 PASS。
+add_executable(panshi-quickaction
+    tools/quickactionshot.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-quickaction PRIVATE src)
+target_compile_definitions(panshi-quickaction PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-quickaction PRIVATE
     Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
     Dtk6::Core Dtk6::Gui Dtk6::Widget)

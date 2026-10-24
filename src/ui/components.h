@@ -169,6 +169,31 @@ QColor borderColor();
 // ---------------------------------------------------------------- 图标 / 字体
 /** 主题图标；主题缺失时回落到 QStyle 标准图标，保证始终有图可显示 */
 QIcon themedIcon(const QString &name, QStyle::StandardPixmap fallback = QStyle::SP_FileIcon);
+
+/**
+ * 把单色源图染成目标色（保留 alpha 通道的抗锯齿边缘）。
+ *
+ * 为什么需要它（2026-10-24 线性图标风格）：
+ *   QtSvg **不支持 currentColor**，SVG 里写死的颜色不会随主题/状态变化；
+ *   而侧栏选中态、按钮图标都要求「图标与文字一起染成主题色」。故把 QIcon
+ *   渲成 pixmap 后用 SourceIn 换色：色值取自 appPalette()，主题切换天然跟随
+ *   （比原先「切主题重查图标」更彻底——连重查都不需要）。
+ *
+ * ⚠️ 为什么不给 QIcon 传 QIcon::Selected 让主题自己染：
+ *   部分主题会对 Selected 状态做**整图替换**（把彩色图标压成单色 symbolic），
+ *   颜色失控（2026-10-03 教训）。自己染，彩色/明暗都受控。
+ */
+QPixmap tintedPixmap(const QIcon &ic, const QSize &size, const QColor &color);
+
+/**
+ * 把自带单色 SVG（data/icons/nav/<name>.svg，纯黑源图）染成目标色，
+ * 生成指定尺寸的 QIcon（按钮/图标按钮用）。
+ *
+ * ⚠️ pixmap 是快照：调用方若把 QIcon 挂到长期存活的控件上，切主题后要
+ *    重新调用本函数换图标（参考 common.h iconBadge 的
+ *    applicationPaletteChanged 重查，2026-10-03 教训）。
+ */
+QIcon tintedSvgIcon(const QString &name, const QSize &size, const QColor &color);
 DLabel *makeLabel(const QString &text, TextLevel lv, Semantic s = Semantic::Normal);
 void applySemantic(DLabel *l, Semantic s);
 /**

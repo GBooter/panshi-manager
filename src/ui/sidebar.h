@@ -7,8 +7,10 @@
  *
  * 用 QListView + QStandardItemModel + 自绘 delegate 实现：
  *  - 分组标题行（概览 / 系统维护 / 设置）：TextTips 小字，不可选中；
- *  - 导航项：主题图标 + 文字，选选态 = Highlight 柔和底 + Highlight 文字
+ *  - 导航项：单色线性图标 + 文字，选选态 = Highlight 柔和底 + Highlight 文字
  *    （跟随用户主题色），hover = ItemBackground；
+ *  - 图标为纯黑 outline 源图（data/icons/nav/*.svg），颜色由 delegate 在
+ *    绘制时现染：选中 = Accent（图标文字一起高亮），常规 = Normal 正文色；
  *  - 键盘可达：↑/↓ 移动（自动跳过分组行）、Enter 激活、Tab 可进入焦点，
  *    焦点框由 QStyle::PE_FrameFocusRect 绘制（修复原 NoFocus + outline:none）。
  *

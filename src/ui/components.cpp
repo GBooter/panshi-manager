@@ -14,6 +14,7 @@
 #include <QList>
 #include <QMainWindow>
 #include <QPaintEvent>
+#include <QPixmap>
 #include <QPainter>
 #include <QPointer>
 #include <QProcess>
@@ -387,6 +388,38 @@ QIcon themedIcon(const QString &name, QStyle::StandardPixmap fallback)
     if (!ic.isNull())
         return ic;
     return QApplication::style()->standardIcon(fallback);
+}
+
+QPixmap tintedPixmap(const QIcon &ic, const QSize &size, const QColor &color)
+{
+    QPixmap px = ic.pixmap(size);
+    if (px.isNull())
+        return px;
+    QPainter tp(&px);
+    tp.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    tp.fillRect(px.rect(), color);
+    tp.end();
+    return px;
+}
+
+QIcon tintedSvgIcon(const QString &name, const QSize &size, const QColor &color)
+{
+    const QIcon src(QStringLiteral(":/icons/nav/%1.svg").arg(name));
+    const QPixmap px = tintedPixmap(src, size, color);
+    // ⚠️ QIcon(QPixmap) 只注册 (Normal, Off) 一个条目；DSuggestButton 的
+    // 绘制路径会取 (Selected, On) 之类的组合，取不到就**整图不画**
+    // （2026-10-24 实测：同图标的 DPushButton 正常、DSuggestButton 完全
+    // 不显示）。四个模式 × 两个状态都补上，任何绘制路径都有图可取。
+    QIcon ic;
+    const QList<QPair<QIcon::Mode, QIcon::State>> states = {
+        {QIcon::Normal, QIcon::Off},   {QIcon::Normal, QIcon::On},
+        {QIcon::Active, QIcon::Off},   {QIcon::Active, QIcon::On},
+        {QIcon::Selected, QIcon::Off}, {QIcon::Selected, QIcon::On},
+        {QIcon::Disabled, QIcon::Off}, {QIcon::Disabled, QIcon::On},
+    };
+    for (const auto &s : states)
+        ic.addPixmap(px, s.first, s.second);
+    return ic;
 }
 
 /**

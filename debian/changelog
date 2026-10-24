@@ -1,3 +1,19 @@
+panshi-manager (1.0.7) unstable; urgency=medium
+
+  * 侧栏改「线性图标 + 平铺」风格（对齐参考设计）：去掉「概览/系统维护/设置」
+    三组分组标题，7 个导航项一屏平铺；图标由彩色实心改为统一单色 outline
+    （自带 SVG，纯黑源图），选中态图标与文字一起染主题色，亮/暗双主题成立。
+    图标加载不再依赖系统 DCI 图标主题，任何环境表现一致。
+  * 修复「快速操作」按钮图标看不清：document-save / system-software-update /
+    view-refresh 等图标名在 DCI 库不存在，一直静默回落到 QStyle 灰色小图标
+    （12px）。三个按钮与页头刷新按钮改用自带线性 SVG 现染 + 显式 20px 尺寸，
+    与侧栏同图形；新增离屏探针 panshi-quickaction 固化「存在/尺寸/图形/染色/
+    可见墨迹」五组断言，防回归。
+  * 组件层新增 tintedPixmap()/tintedSvgIcon()（SourceIn 换色），侧栏 delegate
+    与按钮图标共用一份实现；切主题自动重染。
+
+ -- Feelup <testangel@163.com>  Sat, 24 Oct 2026 11:13:44 +0800
+
 panshi-manager (1.0.6) unstable; urgency=medium
 
   * 修复「关于」页版本号长期不更新：界面一直显示 1.0.0，而实际安装包已到
