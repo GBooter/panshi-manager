@@ -101,7 +101,7 @@ Deepin 25（代号「磐石」）把系统盘做成了 **ostree 不可变镜像*
 从 [**Releases**](https://github.com/GBooter/panshi-manager/releases/latest) 下载 `.deb` 后：
 
 ```bash
-sudo apt install ./panshi-manager_1.0.6_amd64.deb
+sudo apt install ./panshi-manager_1.0.8_amd64.deb
 ```
 
 启动器搜索「磐石设置」，或运行 `panshi-manager`。
@@ -115,10 +115,10 @@ panshi-manager --show-disk            # 直接打开磁盘空间页
 panshi-manager --monitor              # 后台采样（由 systemd timer 调用）
 ```
 
-当前版本 `v1.0.6` 安装包 SHA-256：
+当前版本 `v1.0.8` 安装包 SHA-256：
 
 ```
-f36bbd184b19d1c9f355c2ab1fff964ef5f63b68550e42991c5a3ef61c43aa8e
+8bf5d636bd78c64c68a7b1e8bebe4c89885441c9e5446e8d59dac3eadc352803
 ```
 
 </details>
