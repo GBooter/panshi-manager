@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(panshi-manager VERSION 1.0.7 LANGUAGES CXX)
+project(panshi-manager VERSION 1.0.8 LANGUAGES CXX)
 
 # 版本号单一来源：上方 project() 的 VERSION。
 # 编译期以字符串宏下发，供 QCoreApplication::setApplicationVersion() 使用，
@@ -551,8 +551,22 @@ target_link_libraries(panshi-diskshot PRIVATE
     Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
     Dtk6::Core Dtk6::Gui Dtk6::Widget)
 
-# ---- 英文界面残留离屏探针（开发期专用，panshi-langprobe）------------------
-# 验证「切成英文后仍有中文残留」修复（2026-10-22）：磁盘页 + 监控设置对话框
+# ---- 「关于」页参考区块离屏探针（开发期专用，panshi-aboutpageshot）----
+# 2026-10-27：技术参考 / 常用命令从「两条居中细字开关」重设计为两张参考卡
+# （两列机制网格 + 命令条网格）。版式退化只有几何断言能守住：
+# 命令条若不共享列宽（逐行独立 QHBoxLayout）会参差不齐、卡片被压缩成一条缝、
+# 窄窗下横向溢出被外层 ScrollBarAlwaysOff 静默裁掉。
+add_executable(panshi-aboutpageshot
+    tools/aboutpageshot.cpp
+    ${PANSHI_SOURCES_NO_MAIN}
+    data/icons/icons.qrc)
+target_include_directories(panshi-aboutpageshot PRIVATE src)
+target_compile_definitions(panshi-aboutpageshot PRIVATE PANSHI_ICON_SVG="${CMAKE_CURRENT_SOURCE_DIR}/data/icons/panshi.svg")
+target_link_libraries(panshi-aboutpageshot PRIVATE
+    Qt6::Widgets Qt6::Gui Qt6::Core Qt6::Concurrent Qt6::DBus Qt6::Svg
+    Dtk6::Core Dtk6::Gui Dtk6::Widget)
+
+# ---- 英文界面残留离屏探针（开发期专用，panshi-langprobe）------------------# 验证「切成英文后仍有中文残留」修复（2026-10-22）：磁盘页 + 监控设置对话框
 # 的 SpinBox 后缀（ 小时 / 天）在真机上点不到（xdotool 坐标点击不生效），
 # 故走控件树黑盒断言；判据含「后缀不得含 CJK」，回退成硬编码中文必 FAIL。
 add_executable(panshi-langprobe

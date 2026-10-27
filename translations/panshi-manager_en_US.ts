@@ -4,7 +4,7 @@
 <context>
     <name>AboutPage</name>
     <message>
-        <location filename="../src/pages/aboutpage.cpp" line="+63"/>
+        <location filename="../src/pages/aboutpage.cpp" line="+65"/>
         <source>关于</source>
         <translation>About</translation>
     </message>
@@ -19,12 +19,12 @@
         <translation>Panshi Manager</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+52"/>
         <source>磐石系统技术参考</source>
         <translation>Immutable system technical reference</translation>
     </message>
     <message>
-        <location line="-25"/>
+        <location line="-32"/>
         <source>技术基础</source>
         <translation>Technology stack</translation>
     </message>
@@ -59,102 +59,117 @@
         <translation>Feelup</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+28"/>
+        <source>不可变系统的六条核心机制</source>
+        <translation>Six core mechanisms of the immutable system</translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>核心目录只读保护</source>
         <translation>Read-only system directories</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>/usr 只读 overlay，/etc /opt 可写 overlay</source>
         <translation>/usr read-only overlay; /etc and /opt writable overlay</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>原子更新</source>
         <translation>Atomic updates</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>升级失败自动回滚（auto-rollback-on-failure）</source>
         <translation>Automatic rollback on upgrade failure (auto-rollback-on-failure)</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>快照备份</source>
         <translation>Snapshot backups</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>基于 OSTree 秒级增量快照，支持导出/导入</source>
         <translation>Second-level incremental snapshots based on OSTree, with export/import support</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>初始备份保护</source>
         <translation>Initial backup protection</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>初始备份受系统保护，不可删除/修改</source>
         <translation>The initial backup is system-protected and cannot be deleted or modified</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>还原需重启</source>
         <translation>Restore requires reboot</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>快照还原需重启生效，可写层开启时禁止还原</source>
         <translation>Snapshot restore takes effect after reboot; restore is disabled while the writable layer is enabled</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>分层存储</source>
         <translation>Layered storage</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>系统与数据分区分层，/home 等数据分区不受还原影响</source>
         <translation>System and data partitions are separated; data partitions such as /home are unaffected by restore</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+7"/>
         <source>常用命令参考</source>
         <translation>Common command reference</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+1"/>
+        <source>点击命令右侧图标复制，可直接粘贴到终端执行</source>
+        <translation>Click the icon at the right of a command to copy it, then paste it into a terminal</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>列出快照</source>
         <translation>List snapshots</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>创建快照</source>
         <translation>Create snapshot</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>还原快照</source>
         <translation>Roll back snapshot</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>保护状态</source>
         <translation>Protection status</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>开/关可写层</source>
         <translation>Toggle writable layer</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>部署状态</source>
         <translation>Deployment status</translation>
     </message>
     <message>
-        <location line="-67"/>
+        <location line="+5"/>
+        <source>复制全部</source>
+        <translation>Copy all</translation>
+    </message>
+    <message>
+        <location line="-57"/>
         <source>复制版本信息</source>
         <translation>Copy version info</translation>
     </message>
@@ -1196,32 +1211,29 @@ Capacity %3 · Used %4</translation>
         <translation>Panshi Manager</translation>
     </message>
     <message>
-        <location line="+106"/>
         <source>概览</source>
-        <translation>Overview</translation>
+        <translation type="vanished">Overview</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>系统维护</source>
-        <translation>System maintenance</translation>
+        <translation type="vanished">System maintenance</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>设置</source>
-        <translation>Settings</translation>
+        <translation type="vanished">Settings</translation>
     </message>
     <message>
-        <location line="-12"/>
+        <location line="+102"/>
         <source>总览</source>
         <translation>Overview</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+2"/>
         <source>磁盘空间</source>
         <translation>Disk usage</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+2"/>
         <source>系统保护</source>
         <translation>System protection</translation>
     </message>
@@ -1236,7 +1248,7 @@ Capacity %3 · Used %4</translation>
         <translation>System update</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+2"/>
         <source>策略与设置</source>
         <translation>Policies &amp; settings</translation>
     </message>
@@ -1269,7 +1281,7 @@ Capacity %3 · Used %4</translation>
 <context>
     <name>OverviewPage</name>
     <message>
-        <location filename="../src/pages/overviewpage.cpp" line="+168"/>
+        <location filename="../src/pages/overviewpage.cpp" line="+202"/>
         <source>总览</source>
         <translation>Overview</translation>
     </message>
@@ -1279,7 +1291,7 @@ Capacity %3 · Used %4</translation>
         <translation>At a glance: Panshi system status</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+46"/>
         <source>磐石保护</source>
         <translation>Panshi protection</translation>
     </message>
@@ -1334,13 +1346,13 @@ Capacity %3 · Used %4</translation>
         <translation>Panshi deployments</translation>
     </message>
     <message>
-        <location line="+167"/>
+        <location line="+172"/>
         <location line="+38"/>
         <source>%1 个</source>
         <translation>%1</translation>
     </message>
     <message>
-        <location line="-231"/>
+        <location line="-236"/>
         <source>存储空间</source>
         <translation>Storage</translation>
     </message>
@@ -1380,22 +1392,22 @@ Capacity %3 · Used %4</translation>
         <translation>Shortcuts to common features</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+7"/>
         <source>立即创建备份</source>
         <translation>Create backup now</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+12"/>
         <source>检查系统更新</source>
         <translation>Check for updates</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>保护设置</source>
         <translation>Protection settings</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+81"/>
         <source>正在读取磐石系统状态…</source>
         <translation>Reading Panshi system status…</translation>
     </message>
@@ -1618,7 +1630,7 @@ Capacity %3 · Used %4</translation>
 <context>
     <name>PanshiUi::PanshiAboutDialog</name>
     <message>
-        <location filename="../src/ui/aboutdialog.cpp" line="+277"/>
+        <location filename="../src/ui/aboutdialog.cpp" line="+278"/>
         <source>关于磐石设置</source>
         <translation>About Panshi Manager</translation>
     </message>
@@ -1678,19 +1690,118 @@ Capacity %3 · Used %4</translation>
         <translation>Panshi Manager is released under the GPL-3.0-or-later license</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>磐石系统技术参考</source>
         <translation>Panshi system technical reference</translation>
     </message>
     <message>
+        <location line="+1"/>
+        <source>不可变系统的六条核心机制</source>
+        <translation>Six core mechanisms of the immutable system</translation>
+    </message>
+    <message>
         <location line="+2"/>
+        <source>核心目录只读保护</source>
+        <translation>Read-only protection for core directories</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>/usr 只读 overlay，/etc /opt 可写 overlay</source>
+        <translation>/usr is a read-only overlay; /etc and /opt are writable overlays</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>原子更新</source>
+        <translation>Atomic updates</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>升级失败自动回滚（auto-rollback-on-failure）</source>
+        <translation>Rolls back automatically if an upgrade fails (auto-rollback-on-failure)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>快照备份</source>
+        <translation>Snapshot backups</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>基于 OSTree 秒级增量快照，支持导出/导入</source>
+        <translation>OSTree-based incremental snapshots in seconds, with export and import</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>初始备份保护</source>
+        <translation>Initial backup protection</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>初始备份受系统保护，不可删除/修改</source>
+        <translation>The initial backup is protected by the system and cannot be deleted or modified</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>还原需重启</source>
+        <translation>Rollback needs a reboot</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>快照还原需重启生效，可写层开启时禁止还原</source>
+        <translation>A rollback takes effect after a reboot and is blocked while the writable layer is on</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>分层存储</source>
+        <translation>Layered storage</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>系统与数据分区分层，/home 等数据分区不受还原影响</source>
+        <translation>System and data are layered; data partitions such as /home are unaffected by a rollback</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>点击命令右侧图标复制，可直接粘贴到终端执行</source>
+        <translation>Click the icon at the right of a command to copy it, then paste it into a terminal</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>列出快照</source>
+        <translation>List snapshots</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>创建快照</source>
+        <translation>Create a snapshot</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>还原快照</source>
+        <translation>Roll back to a snapshot</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>保护状态</source>
+        <translation>Protection status</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>开/关可写层</source>
+        <translation>Enable or disable the writable layer</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>部署状态</source>
+        <translation>Deployment status</translation>
+    </message>
+    <message>
         <source>· 核心目录只读保护: /usr 只读 overlay, /etc /opt 可写 overlay
 · 原子更新: 升级失败自动回滚 (auto-rollback-on-failure)
 · 快照备份: 基于 OSTree 秒级增量快照, 支持导出/导入
 · 初始备份受系统保护, 不可删除/修改
 · 快照还原需重启生效, 可写层开启时禁止还原
 · 系统与数据分区分层: /home 等数据分区不受还原影响</source>
-        <translation>· Read-only protection: /usr is a read-only overlay, /etc and /opt are writable overlays
+        <translation type="vanished">· Read-only protection: /usr is a read-only overlay, /etc and /opt are writable overlays
 · Atomic updates: failed upgrades roll back automatically (auto-rollback-on-failure)
 · Snapshot backup: second-level incremental snapshots based on OSTree, export/import supported
 · The initial backup is system-protected and cannot be deleted or modified
@@ -1698,7 +1809,7 @@ Capacity %3 · Used %4</translation>
 · System and data are layered: data partitions such as /home are unaffected by restore</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="-8"/>
         <source>常用命令参考</source>
         <translation>Common commands reference</translation>
     </message>
@@ -1952,7 +2063,7 @@ Enabling the &quot;writable layer&quot; removes the read-only protection (suitab
         <translation>Deepin 25 immutable system management tool</translation>
     </message>
     <message>
-        <location filename="../src/pages/common.h" line="+356"/>
+        <location filename="../src/pages/common.h" line="+359"/>
         <location line="+4"/>
         <location line="+1"/>
         <location line="+20"/>
@@ -1966,23 +2077,29 @@ Enabling the &quot;writable layer&quot; removes the read-only protection (suitab
     </message>
     <message>
         <location filename="../src/pages/aboutpage.cpp" line="+4"/>
+        <location line="+61"/>
         <location filename="../src/pages/common.h" line="+16"/>
         <source>已复制</source>
         <translation>Copied</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="-59"/>
         <source>复制版本信息</source>
         <translation>Copy version info</translation>
     </message>
     <message>
-        <location line="-3"/>
+        <location line="+61"/>
+        <source>复制全部</source>
+        <translation>Copy all</translation>
+    </message>
+    <message>
+        <location line="-64"/>
         <source>磐石设置  </source>
         <translation>Panshi Manager  </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmdialog.cpp" line="+106"/>
         <location filename="../src/pages/common.h" line="-276"/>
+        <location filename="../src/ui/confirmdialog.cpp" line="+106"/>
         <source>确定</source>
         <translation>OK</translation>
     </message>
@@ -2063,7 +2180,7 @@ Enabling the &quot;writable layer&quot; removes the read-only protection (suitab
         <translation>Full output</translation>
     </message>
     <message>
-        <location filename="../src/ui/sidebar.cpp" line="+187"/>
+        <location filename="../src/ui/sidebar.cpp" line="+201"/>
         <source>主导航</source>
         <translation>Main navigation</translation>
     </message>
@@ -2245,34 +2362,44 @@ Enabling the &quot;writable layer&quot; removes the read-only protection (suitab
         <translation>System upgrade</translation>
     </message>
     <message>
-        <location filename="../src/ui/components.cpp" line="+842"/>
+        <location filename="../src/ui/components.cpp" line="+881"/>
         <source>关闭</source>
         <translation>Close</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../tools/disknavprobe.cpp" line="+325"/>
-        <location line="+14"/>
         <source>关闭提示</source>
         <translation>Close notice</translation>
     </message>
     <message>
-        <location filename="../src/tools/navshot.cpp" line="+196"/>
+        <location line="+529"/>
+        <source>展开或收起</source>
+        <translation>Expand or collapse</translation>
+    </message>
+    <message>
+        <location line="+194"/>
+        <source>收起</source>
+        <translation>Collapse</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>展开</source>
+        <translation>Expand</translation>
+    </message>
+    <message>
         <source>概览</source>
-        <translation>Overview</translation>
+        <translation type="vanished">Overview</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>系统维护</source>
-        <translation>Maintenance</translation>
+        <translation type="vanished">Maintenance</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>设置</source>
-        <translation>Settings</translation>
+        <translation type="vanished">Settings</translation>
     </message>
     <message>
-        <location filename="../src/ui/aboutdialog.cpp" line="-369"/>
+        <location filename="../src/ui/aboutdialog.cpp" line="-372"/>
         <source>Deepin 25 磐石（immutable）系统管理工具</source>
         <translation>Deepin 25 Panshi (immutable) system management tool</translation>
     </message>
@@ -2299,104 +2426,76 @@ Enabling the &quot;writable layer&quot; removes the read-only protection (suitab
         <translation>systemctl --user %1 timed out</translation>
     </message>
     <message>
-        <location filename="../tools/diskshot.cpp" line="+169"/>
         <source>条记录</source>
-        <translation> records</translation>
+        <translation type="vanished"> records</translation>
     </message>
     <message>
-        <location line="+19"/>
-        <location line="+31"/>
-        <location filename="../tools/disknavprobe.cpp" line="-133"/>
         <source>增长</source>
-        <translation>Growth</translation>
+        <translation type="vanished">Growth</translation>
     </message>
     <message>
-        <location line="-27"/>
-        <location line="+35"/>
-        <location filename="../tools/disknavprobe.cpp" line="+1"/>
         <source>排行</source>
-        <translation>Ranking</translation>
+        <translation type="vanished">Ranking</translation>
     </message>
     <message>
-        <location line="-19"/>
-        <location line="+42"/>
-        <location line="+36"/>
-        <location filename="../tools/disknavprobe.cpp" line="-103"/>
         <source>磁盘分析表</source>
-        <translation>Disk analysis table</translation>
+        <translation type="vanished">Disk analysis table</translation>
     </message>
     <message>
-        <location line="-3"/>
         <source>较前一日变化</source>
-        <translation>Change vs. previous day</translation>
+        <translation type="vanished">Change vs. previous day</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>前一日暂无数据</source>
-        <translation>No data for the previous day</translation>
+        <translation type="vanished">No data for the previous day</translation>
     </message>
     <message>
-        <location line="+38"/>
         <source>净增长</source>
-        <translation>Net growth</translation>
+        <translation type="vanished">Net growth</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>容量预测</source>
-        <translation>Capacity Forecast</translation>
+        <translation type="vanished">Capacity Forecast</translation>
     </message>
     <message>
-        <location line="+30"/>
         <source>预计</source>
-        <translation>Estimated</translation>
+        <translation type="vanished">Estimated</translation>
     </message>
     <message>
-        <location filename="../tools/disknavprobe.cpp" line="+9"/>
-        <location line="+178"/>
         <source>系统盘</source>
-        <translation>System Disk</translation>
+        <translation type="vanished">System Disk</translation>
     </message>
     <message>
-        <location line="-86"/>
         <source>构成</source>
-        <translation>Composition</translation>
+        <translation type="vanished">Composition</translation>
     </message>
     <message>
-        <location line="+53"/>
         <source>返回系统盘</source>
-        <translation>Back to system disk</translation>
+        <translation type="vanished">Back to system disk</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>返回上级</source>
-        <translation>Back</translation>
+        <translation type="vanished">Back</translation>
     </message>
     <message>
-        <location line="+51"/>
         <source>增长：</source>
-        <translation>Growth:</translation>
+        <translation type="vanished">Growth:</translation>
     </message>
     <message>
-        <location filename="../tools/updateshot.cpp" line="+160"/>
         <source>检查更新</source>
-        <translation>Check for updates</translation>
+        <translation type="vanished">Check for updates</translation>
     </message>
     <message>
-        <location line="+15"/>
-        <location line="+6"/>
         <source>有可用更新</source>
-        <translation>Updates available</translation>
+        <translation type="vanished">Updates available</translation>
     </message>
     <message>
-        <location line="-5"/>
-        <location line="+6"/>
         <source>已是最新</source>
-        <translation>Up to date</translation>
+        <translation type="vanished">Up to date</translation>
     </message>
     <message>
-        <location line="+24"/>
         <source>待更新软件包</source>
-        <translation>Packages to update</translation>
+        <translation type="vanished">Packages to update</translation>
     </message>
 </context>
 <context>

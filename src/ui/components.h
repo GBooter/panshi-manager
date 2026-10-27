@@ -32,12 +32,15 @@
 #include <DSuggestButton>
 #include <DWarningButton>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QColor>
+#include <QFont>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QList>
 #include <QPainter>
+#include <QPixmap>
 #include <QStyle>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -48,6 +51,8 @@ class QGridLayout;
 class QPropertyAnimation;
 class QTableWidget;
 class QTableWidgetItem;
+class QMouseEvent;
+class QResizeEvent;
 
 DWIDGET_USE_NAMESPACE
 DGUI_USE_NAMESPACE
@@ -579,6 +584,126 @@ private:
 
     DPushButton *m_toggle;
     QWidget *m_content = nullptr;
+};
+
+// ---------------------------------------------------------------- 参考信息卡
+/**
+ * 特性 / 参考用的图标：`:res/icons/nav/<key>.svg` 优先（自带单色源图，
+ * **必须按 tint 染色**，否则纯黑源图在暗色主题下等于隐形），
+ * 没有自带 SVG 时才用 DIconTheme 的彩色主题图标（着色会破坏其配色，故原样返回）。
+ *
+ * 存在的理由：featureRow / 参考网格 / 图标图块三处都要「同一套取图与染色规则」，
+ * 各写一份必然分叉（其中一处忘了染色 → 暗色下图标消失且极难发现）。
+ */
+QIcon tintedFeatureIcon(const QString &key, const QColor &tint);
+
+/**
+ * 图块：柔和强调底 + 染色图标，作参考卡的「身份标记」。
+ * 主题切换自动重取图标（pixmap 是快照，见 iconBadge 的同类教训）。
+ */
+class PanshiIconTile : public QWidget
+{
+public:
+    PanshiIconTile(const QString &iconKey, int size = 32, QWidget *parent = nullptr);
+
+protected:
+    void paintEvent(QPaintEvent *e) override;
+
+private:
+    void reloadIcon();
+
+    QString m_iconKey;
+    int m_size;
+    QPixmap m_pixmap;
+};
+
+/** 展开/收起折线指示器：自绘（不依赖图标库），QAbstractButton 提供点击与键盘语义 */
+class PanshiCaret : public QAbstractButton
+{
+public:
+    explicit PanshiCaret(QWidget *parent = nullptr);
+
+    void setExpanded(bool expanded);
+
+protected:
+    void paintEvent(QPaintEvent *e) override;
+
+private:
+    bool m_expanded = true;
+};
+
+/**
+ * 命令条：等宽命令 + item 底 + 圆角，右端可挂 trailing 控件（复制按钮）。
+ * 命令过长时中部省略（tooltip / 无障碍名给全文）。
+ *
+ * 为什么自绘而不套 QLabel：QLabel 只能「裁切」不能「省略」，长命令会把整列
+ * 顶宽；而命令是自由长度文本，绝不该决定行宽（同 ElidedLabel 的教训）。
+ */
+class PanshiCommandChip : public QWidget
+{
+public:
+    explicit PanshiCommandChip(const QString &command, QWidget *parent = nullptr);
+
+    /** 挂右端控件（复制按钮）；文字区自动让位 */
+    void setTrailing(QWidget *w);
+    QString command() const { return m_command; }
+
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
+protected:
+    void paintEvent(QPaintEvent *e) override;
+
+private:
+    QString m_command;
+    QWidget *m_trailing = nullptr;
+    QHBoxLayout *m_lay;
+};
+
+/**
+ * 参考信息卡：图块 + 标题 + 副标题 +（可折叠的）内容区。
+ *
+ * 与 PanshiCollapsible 的分工：
+ *   · PanshiCollapsible 是「一行文字开关」，用在已有分组内部（更新详情 / 原始输出）；
+ *   · 本类是**独立分组**，自己就是一张卡：标题行可点、右侧可挂组级操作，
+ *     内容落在卡片内。
+ * 之所以要分开：把「▸ 标题」这种纯文字开关直接摆在页面上时，既没有容器暗示
+ * 它是可展开的分组，也没有层级（2026-10-27 关于页实证：两条居中细字
+ * 悬在一片留白里，看起来像没做完的占位）。
+ *
+ * 默认展开（组件本身的中性默认），**但两处真实调用都显式 setExpanded(false)**：
+ * 关于页（2026-10-27 定稿）与自绘关于对话框。理由一致 —— 这两块是查阅型内容，
+ * 页面主体是应用信息，默认铺开一整屏清单会把主体稀释掉；折叠态靠标题+副标题
+ * 交代内含什么，caret 与「标题行整行可点」负责可发现性。
+ * 组级 header 按钮（如「复制全部」）挂在标题行、**不随内容收起**。
+ */
+class PanshiRefCard : public PanshiPanel
+{
+public:
+    PanshiRefCard(const QString &iconKey, const QString &title, const QString &subtitle = QString(),
+                  QWidget *parent = nullptr);
+
+    /** 往标题行右侧加组级操作（默认展开态也可见） */
+    void addHeaderWidget(QWidget *w);
+    /** 内容布局（已带 0 内边距，调用方自行加条目） */
+    QVBoxLayout *content() const { return m_content; }
+
+    void setExpanded(bool expanded);
+    bool isExpanded() const { return m_expanded; }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *e) override;
+
+private:
+    void syncExpanded();
+
+    QWidget *m_header = nullptr;
+    QHBoxLayout *m_headerRow = nullptr;
+    QWidget *m_sep = nullptr;
+    QWidget *m_contentHost = nullptr;
+    QVBoxLayout *m_content = nullptr;
+    PanshiCaret *m_caret = nullptr;
+    bool m_expanded = true;
 };
 
 // ---------------------------------------------------------------- 杂项

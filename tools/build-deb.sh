@@ -75,7 +75,18 @@ echo "==> 选用二进制: $BIN ($(stat -c%s "$BIN") 字节)"
 # 缺了说明二进制是旧构建 —— 那种包装上去界面版本又会和包版本对不上。
 # ⚠ 版本串经 QStringLiteral 以 **UTF-16LE** 存进 rodata，普通 strings（只抽 ASCII）
 #   会把它拆成单字符序列而漏报；必须同时查 ASCII 与 -e l（16-bit LE）两种编码。
-if ! strings "$BIN" | grep -qx "$VERSION" && ! strings -e l "$BIN" | grep -qx "$VERSION"; then
+#
+# 🚨 这里**不能**写 `strings ... | grep -qx "$VERSION"`：脚本开了 pipefail，
+#    `grep -q` 一匹配到就退出 → 上游 strings 收到 SIGPIPE（141）→ 整条管道
+#    在 pipefail 下判为失败 → `!` 取反后直接中止打包。1.0.8 首次打包即被此坑
+#    拦下：二进制里明明有版本串，脚本却报「疑似旧构建」。
+#    改用 `grep -cx`（读完全部输入，不提前退出）再判计数 > 0。
+has_version_string() {   # $1: strings 的额外参数（如 -e l），可为空
+    local n
+    n="$(strings $1 "$BIN" 2>/dev/null | grep -cx "$VERSION" || true)"
+    [ "${n:-0}" -gt 0 ]
+}
+if ! has_version_string "" && ! has_version_string "-e l"; then
   echo "错误：$BIN 内不含版本串 ${VERSION}，疑似旧构建，请重新编译后再打包" >&2
   exit 1
 fi

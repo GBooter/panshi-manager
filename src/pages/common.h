@@ -19,10 +19,13 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QFileInfo>
+#include <QFont>
+#include <QGridLayout>
 #include <QPainter>
 #include <QHBoxLayout>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QVector>
 #include <QWidget>
 #include <QScrollArea>
 #include <QIcon>
@@ -417,6 +420,29 @@ inline QWidget *makeCommandRow(const QString &cmd, const QString &comment,
 }
 
 /**
+ * 主题图标标签：自带 nav SVG 优先、按正文色现染，切主题自动重取。
+ *
+ * ⚠️ 必须重取（pixmap 是快照）：自带源图是纯黑单色，若不染/不重取，
+ * 暗色主题下就是「黑图标压深底」——等于看不见（本次改版发现的老问题：
+ * featureRow 原来直接画纯黑 SVG，暗色下技术参考的图标全是黑的）。
+ */
+inline DLabel *featureIconLabel(const QString &iconKey, int size)
+{
+    auto *l = new DLabel;
+    l->setFixedSize(size, size);
+    l->setAlignment(Qt::AlignCenter);
+    const int isz = qMax(12, int(size * 0.56));
+    const auto apply = [l, iconKey, isz] {
+        l->setPixmap(PanshiUi::tintedFeatureIcon(iconKey, PanshiUi::semanticColor(PanshiUi::Semantic::Normal))
+                         .pixmap(isz, isz));
+    };
+    apply();
+    QObject::connect(DGuiApplicationHelper::instance(),
+                     &DGuiApplicationHelper::applicationPaletteChanged, l, apply);
+    return l;
+}
+
+/**
  * 特性说明行：小图标 + 标题 + 说明（更新说明 / 技术参考等长文本区块用）。
  *
  * 图标取「应用自带 nav SVG 优先、主题图标兜底」——与侧栏 navIcon 同策略：
@@ -432,20 +458,7 @@ inline QWidget *featureRow(const QString &iconKey, const QString &title, const Q
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(PanshiUi::Space::M);
 
-    QIcon ic;
-    const QString bundled = QStringLiteral(":/icons/nav/%1.svg").arg(iconKey);
-    if (QFileInfo::exists(bundled))
-        ic = QIcon(bundled);
-    else
-        ic = themedIcon(iconKey);
-    if (ic.isNull())
-        ic = themedIcon(QStringLiteral("dialog-information"));
-
-    auto *icon = new DLabel(w);
-    icon->setFixedSize(36, 36);
-    icon->setAlignment(Qt::AlignCenter);
-    icon->setPixmap(ic.pixmap(20, 20));
-    h->addWidget(icon, 0, Qt::AlignTop);
+    h->addWidget(featureIconLabel(iconKey, 36), 0, Qt::AlignTop);
 
     auto *tl = new QVBoxLayout;
     tl->setSpacing(PanshiUi::Space::XS);
@@ -462,6 +475,118 @@ inline QWidget *featureRow(const QString &iconKey, const QString &title, const Q
     tl->addWidget(d);
     h->addLayout(tl, 1);
     return w;
+}
+
+// ======================================================================
+// 「关于」页 / 关于对话框的参考信息（2026-10-27 重设计）
+//
+// 旧版把两组参考内容做成两条居中细字「▸ 磐石系统技术参考 / ▸ 常用命令参考」，
+// 悬在页面留白里：没有容器暗示这是可展开分组，也没有任何层级，
+// 展开后又是一行行"图标+两行字"与"命令+说明"混排的流水账。
+// 现结构 = 参考卡（PanshiRefCard，自带标题行/分隔线/折叠）+ 两种内容网格：
+//   · referenceGrid：技术机制，宽裕时两列，标题对齐成行；
+//   · commandList：命令，目的列 + 命令条共享列宽（命令竖向对齐，不随字数参差）。
+// ======================================================================
+
+/** 参考条目：标题 + 一句说明 */
+struct ReferenceItem
+{
+    QString title;
+    QString desc;
+};
+
+/**
+ * 单条参考：标题（半粗）+ 可折行说明。
+ *
+ * 条目**不配图标**：图标只有在语义精确时才是信息，否则是噪声。
+ * 实测（2026-10-27）六个条目里有两个在 DCI 图标库没有对应语义，
+ * 直接回落成 QStyle 的灰色标准图标 —— 同一组里混进两个"不知所谓"的图形，
+ * 比整齐的纯文字更难看。语义由卡片标题行的图块承担，条目只做文字层级。
+ */
+inline QWidget *referenceItem(const ReferenceItem &item, QWidget *parent = nullptr)
+{
+    auto *w = new QWidget(parent);
+    auto *tl = new QVBoxLayout(w);
+    tl->setContentsMargins(0, 0, 0, 0);
+    tl->setSpacing(PanshiUi::Space::XS);
+
+    auto *t = new DLabel(item.title);
+    t->setForegroundRole(DPalette::TextTitle);
+    DFontSizeManager::instance()->bind(t, DFontSizeManager::T5);
+    QFont tf = t->font();
+    tf.setWeight(QFont::DemiBold);   // 半粗：无图标时靠字重区分"标题/说明"
+    t->setFont(tf);
+    auto *d = new DLabel(item.desc);
+    d->setForegroundRole(DPalette::TextTips);
+    d->setWordWrap(true);
+    DFontSizeManager::instance()->bind(d, DFontSizeManager::T6);
+    tl->addWidget(t);
+    tl->addWidget(d);
+
+    w->setAccessibleName(item.title + QStringLiteral("：") + item.desc);
+    // 探针钩子（PanshiRefCard 系列组件不带 Q_OBJECT，findChildren<类型>() 不可用）
+    w->setObjectName(QStringLiteral("panshiReferenceItem"));
+    return w;
+}
+
+/**
+ * 参考网格：按 cols 列排布条目，单元格顶部对齐（说明行数不同也保持标题齐平）。
+ * cols 由调用方按可用宽度决定（页面两列 / 600px 对话框一列）。
+ */
+inline QWidget *referenceGrid(const QVector<ReferenceItem> &items, int cols = 2,
+                              QWidget *parent = nullptr)
+{
+    auto *host = new QWidget(parent);
+    auto *grid = new QGridLayout(host);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setHorizontalSpacing(PanshiUi::Space::XL);
+    grid->setVerticalSpacing(PanshiUi::Space::L);
+    const int n = qMax(1, cols);
+    for (int i = 0; i < items.size(); ++i)
+        grid->addWidget(referenceItem(items.at(i), host), i / n, i % n, Qt::AlignTop);
+    for (int c = 0; c < n; ++c)
+        grid->setColumnStretch(c, 1);
+    return host;
+}
+
+/** 一条命令：命令原文 + 用途（用途由调用方 tr() 后传入，保持各自的翻译上下文） */
+struct CommandRef
+{
+    QString cmd;
+    QString comment;
+};
+
+/**
+ * 命令列表：目的列 | 命令条（含行尾复制按钮）。
+ *
+ * 用 QGridLayout 而非每行独立 QHBoxLayout：列宽共享才能让所有命令的
+ * 左边缘、右边缘对齐；否则命令长短不一，右端复制按钮会参差成锯齿。
+ */
+inline QWidget *commandList(const QVector<CommandRef> &rows, QWidget *parent = nullptr)
+{
+    auto *host = new QWidget(parent);
+    auto *grid = new QGridLayout(host);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setHorizontalSpacing(PanshiUi::Space::L);
+    grid->setVerticalSpacing(PanshiUi::Space::S);
+
+    int r = 0;
+    for (const CommandRef &c : rows) {
+        auto *l = new DLabel(c.comment);
+        l->setForegroundRole(DPalette::TextTitle);
+        DFontSizeManager::instance()->bind(l, DFontSizeManager::T5);
+        l->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        grid->addWidget(l, r, 0);
+
+        auto *chip = new PanshiUi::PanshiCommandChip(c.cmd, host);
+        chip->setObjectName(QStringLiteral("panshiCommandChip"));   // 探针钩子，同上
+        chip->setTrailing(makeCopyButton(c.cmd, chip));
+        grid->addWidget(chip, r, 1);
+        ++r;
+    }
+    grid->setColumnStretch(1, 1);
+    grid->setColumnMinimumWidth(0, 76);
+    return host;
 }
 
 } // namespace Ui

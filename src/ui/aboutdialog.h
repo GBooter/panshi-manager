@@ -25,7 +25,7 @@
 
 namespace PanshiUi {
 
-class PanshiCollapsible;
+class PanshiRefCard;
 
 /**
  * 关于对话框的默认最小宽度。
@@ -94,8 +94,8 @@ private:
     QWidget *m_body = nullptr;
     Dtk::Widget::DLabel *m_icon = nullptr;
     PanshiUi::LinkRow *m_linkRow = nullptr;
-    PanshiCollapsible *m_refBox = nullptr;
-    PanshiCollapsible *m_cmdBox = nullptr;
+    PanshiRefCard *m_refBox = nullptr;
+    PanshiRefCard *m_cmdBox = nullptr;
 };
 
 } // namespace PanshiUi

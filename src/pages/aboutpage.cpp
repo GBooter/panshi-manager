@@ -14,8 +14,10 @@
 #include <QCoreApplication>
 #include <QFont>
 #include <QIcon>
+#include <QStringList>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QVector>
 
 DWIDGET_USE_NAMESPACE
 using namespace PanshiUi;
@@ -126,61 +128,71 @@ AboutPage::AboutPage(QWidget *parent)
 
     lay->addWidget(info);
 
-    // ---- ② 技术参考（默认折叠，方案 §3.3 P6 / 修 I17）----
-    auto *refBox = new PanshiCollapsible(tr("磐石系统技术参考"), this);
-    auto *refHost = new QWidget(refBox);
-    auto *refLay = new QVBoxLayout(refHost);
-    refLay->setContentsMargins(0, 0, 0, 0);
-    refLay->setSpacing(Space::S);
-    refLay->addWidget(Ui::featureRow(
-        QStringLiteral("shield-check"), tr("核心目录只读保护"),
-        tr("/usr 只读 overlay，/etc /opt 可写 overlay"), refHost));
-    refLay->addWidget(Ui::featureRow(
-        QStringLiteral("cycle-update"), tr("原子更新"),
-        tr("升级失败自动回滚（auto-rollback-on-failure）"), refHost));
-    refLay->addWidget(Ui::featureRow(
-        QStringLiteral("layers-snapshot"), tr("快照备份"),
-        tr("基于 OSTree 秒级增量快照，支持导出/导入"), refHost));
-    refLay->addWidget(Ui::featureRow(
-        QStringLiteral("shield-check"), tr("初始备份保护"),
-        tr("初始备份受系统保护，不可删除/修改"), refHost));
-    refLay->addWidget(Ui::featureRow(
-        QStringLiteral("system-reboot"), tr("还原需重启"),
-        tr("快照还原需重启生效，可写层开启时禁止还原"), refHost));
-    refLay->addWidget(Ui::featureRow(
-        QStringLiteral("drive-harddisk"), tr("分层存储"),
-        tr("系统与数据分区分层，/home 等数据分区不受还原影响"), refHost));
-    refBox->setContent(refHost);
-    lay->addWidget(refBox);
+    // ---- ② 技术参考（参考卡，默认折叠）----
+    //
+    // 2026-10-27 重设计：原先这里是两条居中的「▸ 标题」细字，悬在页面下半幅
+    // 留白中 —— 既没有容器暗示"这是可展开的分组"，也没有层级（用户反馈
+    // 「这部分现在的方式不好看」）。现改为一张独立的参考卡：
+    //   图块 + 标题 + 副标题 + 分隔线 + 两列机制网格。
+    //
+    // 默认折叠（用户 2026-10-27 复评后的定稿）：这两块是**查阅型**内容，
+    // 一年看一次；「关于」页的主体是上面的应用信息。默认展开会让页面变成
+    // 一屏半的清单，主体反被稀释。折叠态并非空壳：图块 + 标题 + 副标题
+    // （"不可变系统的六条核心机制"）已经说清这条折叠项里是什么，caret
+    // 指示可展开，标题行整行可点。
+    auto *refCard = new PanshiRefCard(QStringLiteral("shield-check"),
+                                      tr("磐石系统技术参考"),
+                                      tr("不可变系统的六条核心机制"), this);
+    // objectName 给探针（panshi-aboutpageshot）作稳定钩子：组件类不带 Q_OBJECT，
+    // findChildren<具体类型>() 用不了，只能按名字找。
+    refCard->setObjectName(QStringLiteral("panshiAboutTechCard"));
+    const QVector<Ui::ReferenceItem> feats = {
+        {tr("核心目录只读保护"), tr("/usr 只读 overlay，/etc /opt 可写 overlay")},
+        {tr("原子更新"), tr("升级失败自动回滚（auto-rollback-on-failure）")},
+        {tr("快照备份"), tr("基于 OSTree 秒级增量快照，支持导出/导入")},
+        {tr("初始备份保护"), tr("初始备份受系统保护，不可删除/修改")},
+        {tr("还原需重启"), tr("快照还原需重启生效，可写层开启时禁止还原")},
+        {tr("分层存储"), tr("系统与数据分区分层，/home 等数据分区不受还原影响")},
+    };
+    refCard->content()->addWidget(Ui::referenceGrid(feats, 2, refCard));
+    refCard->setExpanded(false);   // 默认折叠：查阅型内容，不该占主体视野
+    lay->addWidget(refCard);
 
-    // ---- ③ 常用命令（默认折叠，每行带复制按钮）----
-    auto *cmdBox = new PanshiCollapsible(tr("常用命令参考"), this);
-    auto *cmdHost = new QWidget(cmdBox);
-    auto *cmdLay = new QVBoxLayout(cmdHost);
-    cmdLay->setContentsMargins(0, 0, 0, 0);
-    cmdLay->setSpacing(Space::S);
+    // ---- ③ 常用命令（参考卡，命令条 + 行尾复制 + 组级「复制全部」）----
+    auto *cmdCard = new PanshiRefCard(QStringLiteral("utilities-terminal"),
+                                      tr("常用命令参考"),
+                                      tr("点击命令右侧图标复制，可直接粘贴到终端执行"), this);
+    cmdCard->setObjectName(QStringLiteral("panshiAboutCommandCard"));
 
-    cmdLay->addWidget(Ui::makeCommandRow(
-        QStringLiteral("sudo deepin-immutable-ctl snapshot list"),
-        tr("列出快照"), cmdHost));
-    cmdLay->addWidget(Ui::makeCommandRow(
-        QStringLiteral("sudo deepin-immutable-ctl snapshot create <名称> <描述>"),
-        tr("创建快照"), cmdHost));
-    cmdLay->addWidget(Ui::makeCommandRow(
-        QStringLiteral("sudo deepin-immutable-ctl snapshot rollback <id>"),
-        tr("还原快照"), cmdHost));
-    cmdLay->addWidget(Ui::makeCommandRow(
-        QStringLiteral("sudo deepin-immutable-writable status"),
-        tr("保护状态"), cmdHost));
-    cmdLay->addWidget(Ui::makeCommandRow(
-        QStringLiteral("sudo deepin-immutable-writable enable|disable"),
-        tr("开/关可写层"), cmdHost));
-    cmdLay->addWidget(Ui::makeCommandRow(
-        QStringLiteral("sudo deepin-immutable-ctl admin status"),
-        tr("部署状态"), cmdHost));
+    const QVector<Ui::CommandRef> cmds = {
+        {QStringLiteral("sudo deepin-immutable-ctl snapshot list"), tr("列出快照")},
+        {QStringLiteral("sudo deepin-immutable-ctl snapshot create <名称> <描述>"), tr("创建快照")},
+        {QStringLiteral("sudo deepin-immutable-ctl snapshot rollback <id>"), tr("还原快照")},
+        {QStringLiteral("sudo deepin-immutable-writable status"), tr("保护状态")},
+        {QStringLiteral("sudo deepin-immutable-writable enable|disable"), tr("开/关可写层")},
+        {QStringLiteral("sudo deepin-immutable-ctl admin status"), tr("部署状态")},
+    };
+    cmdCard->content()->addWidget(Ui::commandList(cmds, cmdCard));
 
-    cmdBox->setContent(cmdHost);
-    lay->addWidget(cmdBox);
+    // 组级操作：一次复制全部命令（逐条复制六次是多余劳动）
+    auto *bCopyAll = new DPushButton(tr("复制全部"), cmdCard);
+    bCopyAll->setCursor(Qt::PointingHandCursor);
+    QObject::connect(bCopyAll, &DPushButton::clicked, bCopyAll, [bCopyAll, cmds] {
+        QStringList lines;
+        lines.reserve(cmds.size());
+        for (const Ui::CommandRef &c : cmds)
+            lines << c.cmd;
+        QApplication::clipboard()->setText(lines.join(QLatin1Char('\n')));
+        bCopyAll->setText(QObject::tr("已复制"));
+        QTimer::singleShot(2000, bCopyAll, [bCopyAll] {
+            bCopyAll->setText(QObject::tr("复制全部"));
+        });
+    });
+    cmdCard->addHeaderWidget(bCopyAll);
+    // 折叠态下「复制全部」仍留在标题行（组级操作挂在 header 上，不属于内容区）——
+    // 这是刻意的：折叠只收起条款清单，不收起"一键拿走全部命令"这个入口。
+    cmdCard->setExpanded(false);
+    lay->addWidget(cmdCard);
 
     lay->addStretch();
 }

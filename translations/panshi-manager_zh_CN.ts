@@ -4,7 +4,7 @@
 <context>
     <name>AboutPage</name>
     <message>
-        <location filename="../src/pages/aboutpage.cpp" line="+63"/>
+        <location filename="../src/pages/aboutpage.cpp" line="+65"/>
         <source>关于</source>
         <translation>关于</translation>
     </message>
@@ -19,12 +19,12 @@
         <translation>磐石设置</translation>
     </message>
     <message>
-        <location line="+45"/>
+        <location line="+52"/>
         <source>磐石系统技术参考</source>
         <translation>磐石系统技术参考</translation>
     </message>
     <message>
-        <location line="-25"/>
+        <location line="-32"/>
         <source>技术基础</source>
         <translation>技术基础</translation>
     </message>
@@ -59,102 +59,117 @@
         <translation>Feelup</translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+28"/>
+        <source>不可变系统的六条核心机制</source>
+        <translation>不可变系统的六条核心机制</translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>核心目录只读保护</source>
         <translation>核心目录只读保护</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>/usr 只读 overlay，/etc /opt 可写 overlay</source>
         <translation>/usr 只读 overlay，/etc /opt 可写 overlay</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>原子更新</source>
         <translation>原子更新</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>升级失败自动回滚（auto-rollback-on-failure）</source>
         <translation>升级失败自动回滚（auto-rollback-on-failure）</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>快照备份</source>
         <translation>快照备份</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>基于 OSTree 秒级增量快照，支持导出/导入</source>
         <translation>基于 OSTree 秒级增量快照，支持导出/导入</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>初始备份保护</source>
         <translation>初始备份保护</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>初始备份受系统保护，不可删除/修改</source>
         <translation>初始备份受系统保护，不可删除/修改</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>还原需重启</source>
         <translation>还原需重启</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>快照还原需重启生效，可写层开启时禁止还原</source>
         <translation>快照还原需重启生效，可写层开启时禁止还原</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>分层存储</source>
         <translation>分层存储</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>系统与数据分区分层，/home 等数据分区不受还原影响</source>
         <translation>系统与数据分区分层，/home 等数据分区不受还原影响</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+7"/>
         <source>常用命令参考</source>
         <translation>常用命令参考</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+1"/>
+        <source>点击命令右侧图标复制，可直接粘贴到终端执行</source>
+        <translation>点击命令右侧图标复制，可直接粘贴到终端执行</translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>列出快照</source>
         <translation>列出快照</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>创建快照</source>
         <translation>创建快照</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>还原快照</source>
         <translation>还原快照</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>保护状态</source>
         <translation>保护状态</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>开/关可写层</source>
         <translation>开/关可写层</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
         <source>部署状态</source>
         <translation>部署状态</translation>
     </message>
     <message>
-        <location line="-67"/>
+        <location line="+5"/>
+        <source>复制全部</source>
+        <translation>复制全部</translation>
+    </message>
+    <message>
+        <location line="-57"/>
         <source>复制版本信息</source>
         <translation>复制版本信息</translation>
     </message>
@@ -1195,32 +1210,29 @@
         <translation>磐石设置</translation>
     </message>
     <message>
-        <location line="+106"/>
         <source>概览</source>
-        <translation>概览</translation>
+        <translation type="vanished">概览</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>系统维护</source>
-        <translation>系统维护</translation>
+        <translation type="vanished">系统维护</translation>
     </message>
     <message>
-        <location line="+11"/>
         <source>设置</source>
-        <translation>设置</translation>
+        <translation type="vanished">设置</translation>
     </message>
     <message>
-        <location line="-12"/>
+        <location line="+102"/>
         <source>总览</source>
         <translation>总览</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+2"/>
         <source>磁盘空间</source>
         <translation>磁盘空间</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+2"/>
         <source>系统保护</source>
         <translation>系统保护</translation>
     </message>
@@ -1235,7 +1247,7 @@
         <translation>系统更新</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+2"/>
         <source>策略与设置</source>
         <translation>策略与设置</translation>
     </message>
@@ -1268,7 +1280,7 @@
 <context>
     <name>OverviewPage</name>
     <message>
-        <location filename="../src/pages/overviewpage.cpp" line="+168"/>
+        <location filename="../src/pages/overviewpage.cpp" line="+202"/>
         <source>总览</source>
         <translation>总览</translation>
     </message>
@@ -1278,7 +1290,7 @@
         <translation>磐石系统运行状态一览</translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+46"/>
         <source>磐石保护</source>
         <translation>磐石保护</translation>
     </message>
@@ -1333,13 +1345,13 @@
         <translation>磐石部署</translation>
     </message>
     <message>
-        <location line="+167"/>
+        <location line="+172"/>
         <location line="+38"/>
         <source>%1 个</source>
         <translation>%1 个</translation>
     </message>
     <message>
-        <location line="-231"/>
+        <location line="-236"/>
         <source>存储空间</source>
         <translation>存储空间</translation>
     </message>
@@ -1379,22 +1391,22 @@
         <translation>常用功能快捷入口</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+7"/>
         <source>立即创建备份</source>
         <translation>立即创建备份</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+12"/>
         <source>检查系统更新</source>
         <translation>检查系统更新</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>保护设置</source>
         <translation>保护设置</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+81"/>
         <source>正在读取磐石系统状态…</source>
         <translation>正在读取磐石系统状态…</translation>
     </message>
@@ -1617,7 +1629,7 @@
 <context>
     <name>PanshiUi::PanshiAboutDialog</name>
     <message>
-        <location filename="../src/ui/aboutdialog.cpp" line="+277"/>
+        <location filename="../src/ui/aboutdialog.cpp" line="+278"/>
         <source>关于磐石设置</source>
         <translation>关于磐石设置</translation>
     </message>
@@ -1677,19 +1689,118 @@
         <translation>磐石设置遵循 GPL-3.0-or-later 协议发布</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+6"/>
         <source>磐石系统技术参考</source>
         <translation>磐石系统技术参考</translation>
     </message>
     <message>
+        <location line="+1"/>
+        <source>不可变系统的六条核心机制</source>
+        <translation>不可变系统的六条核心机制</translation>
+    </message>
+    <message>
         <location line="+2"/>
+        <source>核心目录只读保护</source>
+        <translation>核心目录只读保护</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>/usr 只读 overlay，/etc /opt 可写 overlay</source>
+        <translation>/usr 只读 overlay，/etc /opt 可写 overlay</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>原子更新</source>
+        <translation>原子更新</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>升级失败自动回滚（auto-rollback-on-failure）</source>
+        <translation>升级失败自动回滚（auto-rollback-on-failure）</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>快照备份</source>
+        <translation>快照备份</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>基于 OSTree 秒级增量快照，支持导出/导入</source>
+        <translation>基于 OSTree 秒级增量快照，支持导出/导入</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>初始备份保护</source>
+        <translation>初始备份保护</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>初始备份受系统保护，不可删除/修改</source>
+        <translation>初始备份受系统保护，不可删除/修改</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>还原需重启</source>
+        <translation>还原需重启</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>快照还原需重启生效，可写层开启时禁止还原</source>
+        <translation>快照还原需重启生效，可写层开启时禁止还原</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>分层存储</source>
+        <translation>分层存储</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>系统与数据分区分层，/home 等数据分区不受还原影响</source>
+        <translation>系统与数据分区分层，/home 等数据分区不受还原影响</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>点击命令右侧图标复制，可直接粘贴到终端执行</source>
+        <translation>点击命令右侧图标复制，可直接粘贴到终端执行</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>列出快照</source>
+        <translation>列出快照</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>创建快照</source>
+        <translation>创建快照</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>还原快照</source>
+        <translation>还原快照</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>保护状态</source>
+        <translation>保护状态</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>开/关可写层</source>
+        <translation>开/关可写层</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>部署状态</source>
+        <translation>部署状态</translation>
+    </message>
+    <message>
         <source>· 核心目录只读保护: /usr 只读 overlay, /etc /opt 可写 overlay
 · 原子更新: 升级失败自动回滚 (auto-rollback-on-failure)
 · 快照备份: 基于 OSTree 秒级增量快照, 支持导出/导入
 · 初始备份受系统保护, 不可删除/修改
 · 快照还原需重启生效, 可写层开启时禁止还原
 · 系统与数据分区分层: /home 等数据分区不受还原影响</source>
-        <translation>· 核心目录只读保护: /usr 只读 overlay, /etc /opt 可写 overlay
+        <translation type="vanished">· 核心目录只读保护: /usr 只读 overlay, /etc /opt 可写 overlay
 · 原子更新: 升级失败自动回滚 (auto-rollback-on-failure)
 · 快照备份: 基于 OSTree 秒级增量快照, 支持导出/导入
 · 初始备份受系统保护, 不可删除/修改
@@ -1697,7 +1808,7 @@
 · 系统与数据分区分层: /home 等数据分区不受还原影响</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="-8"/>
         <source>常用命令参考</source>
         <translation>常用命令参考</translation>
     </message>
@@ -1950,7 +2061,7 @@
         <translation>Deepin 25 磐石系统管理工具</translation>
     </message>
     <message>
-        <location filename="../src/pages/common.h" line="+356"/>
+        <location filename="../src/pages/common.h" line="+359"/>
         <location line="+4"/>
         <location line="+1"/>
         <location line="+20"/>
@@ -1964,23 +2075,29 @@
     </message>
     <message>
         <location filename="../src/pages/aboutpage.cpp" line="+4"/>
+        <location line="+61"/>
         <location filename="../src/pages/common.h" line="+16"/>
         <source>已复制</source>
         <translation>已复制</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="-59"/>
         <source>复制版本信息</source>
         <translation>复制版本信息</translation>
     </message>
     <message>
-        <location line="-3"/>
+        <location line="+61"/>
+        <source>复制全部</source>
+        <translation>复制全部</translation>
+    </message>
+    <message>
+        <location line="-64"/>
         <source>磐石设置  </source>
         <translation>磐石设置  </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmdialog.cpp" line="+106"/>
         <location filename="../src/pages/common.h" line="-276"/>
+        <location filename="../src/ui/confirmdialog.cpp" line="+106"/>
         <source>确定</source>
         <translation>确定</translation>
     </message>
@@ -2061,7 +2178,7 @@
         <translation>完整输出</translation>
     </message>
     <message>
-        <location filename="../src/ui/sidebar.cpp" line="+187"/>
+        <location filename="../src/ui/sidebar.cpp" line="+201"/>
         <source>主导航</source>
         <translation>主导航</translation>
     </message>
@@ -2243,34 +2360,44 @@
         <translation>系统升级</translation>
     </message>
     <message>
-        <location filename="../src/ui/components.cpp" line="+842"/>
+        <location filename="../src/ui/components.cpp" line="+881"/>
         <source>关闭</source>
         <translation>关闭</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../tools/disknavprobe.cpp" line="+325"/>
-        <location line="+14"/>
         <source>关闭提示</source>
         <translation>关闭提示</translation>
     </message>
     <message>
-        <location filename="../src/tools/navshot.cpp" line="+196"/>
+        <location line="+529"/>
+        <source>展开或收起</source>
+        <translation>展开或收起</translation>
+    </message>
+    <message>
+        <location line="+194"/>
+        <source>收起</source>
+        <translation>收起</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>展开</source>
+        <translation>展开</translation>
+    </message>
+    <message>
         <source>概览</source>
-        <translation>概览</translation>
+        <translation type="vanished">概览</translation>
     </message>
     <message>
-        <location line="+4"/>
         <source>系统维护</source>
-        <translation>系统维护</translation>
+        <translation type="vanished">系统维护</translation>
     </message>
     <message>
-        <location line="+5"/>
         <source>设置</source>
-        <translation>设置</translation>
+        <translation type="vanished">设置</translation>
     </message>
     <message>
-        <location filename="../src/ui/aboutdialog.cpp" line="-369"/>
+        <location filename="../src/ui/aboutdialog.cpp" line="-372"/>
         <source>Deepin 25 磐石（immutable）系统管理工具</source>
         <translation>Deepin 25 磐石（immutable）系统管理工具</translation>
     </message>
@@ -2297,104 +2424,76 @@
         <translation>systemctl --user %1 执行超时</translation>
     </message>
     <message>
-        <location filename="../tools/diskshot.cpp" line="+169"/>
         <source>条记录</source>
-        <translation>条记录</translation>
+        <translation type="vanished">条记录</translation>
     </message>
     <message>
-        <location line="+19"/>
-        <location line="+31"/>
-        <location filename="../tools/disknavprobe.cpp" line="-133"/>
         <source>增长</source>
-        <translation>增长</translation>
+        <translation type="vanished">增长</translation>
     </message>
     <message>
-        <location line="-27"/>
-        <location line="+35"/>
-        <location filename="../tools/disknavprobe.cpp" line="+1"/>
         <source>排行</source>
-        <translation>排行</translation>
+        <translation type="vanished">排行</translation>
     </message>
     <message>
-        <location line="-19"/>
-        <location line="+42"/>
-        <location line="+36"/>
-        <location filename="../tools/disknavprobe.cpp" line="-103"/>
         <source>磁盘分析表</source>
-        <translation>磁盘分析表</translation>
+        <translation type="vanished">磁盘分析表</translation>
     </message>
     <message>
-        <location line="-3"/>
         <source>较前一日变化</source>
-        <translation>较前一日变化</translation>
+        <translation type="vanished">较前一日变化</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>前一日暂无数据</source>
-        <translation>前一日暂无数据</translation>
+        <translation type="vanished">前一日暂无数据</translation>
     </message>
     <message>
-        <location line="+38"/>
         <source>净增长</source>
-        <translation>净增长</translation>
+        <translation type="vanished">净增长</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>容量预测</source>
-        <translation>容量预测</translation>
+        <translation type="vanished">容量预测</translation>
     </message>
     <message>
-        <location line="+30"/>
         <source>预计</source>
-        <translation>预计</translation>
+        <translation type="vanished">预计</translation>
     </message>
     <message>
-        <location filename="../tools/disknavprobe.cpp" line="+9"/>
-        <location line="+178"/>
         <source>系统盘</source>
-        <translation>系统盘</translation>
+        <translation type="vanished">系统盘</translation>
     </message>
     <message>
-        <location line="-86"/>
         <source>构成</source>
-        <translation>构成</translation>
+        <translation type="vanished">构成</translation>
     </message>
     <message>
-        <location line="+53"/>
         <source>返回系统盘</source>
-        <translation>返回系统盘</translation>
+        <translation type="vanished">返回系统盘</translation>
     </message>
     <message>
-        <location line="+1"/>
         <source>返回上级</source>
-        <translation>返回上级</translation>
+        <translation type="vanished">返回上级</translation>
     </message>
     <message>
-        <location line="+51"/>
         <source>增长：</source>
-        <translation>增长：</translation>
+        <translation type="vanished">增长：</translation>
     </message>
     <message>
-        <location filename="../tools/updateshot.cpp" line="+160"/>
         <source>检查更新</source>
-        <translation>检查更新</translation>
+        <translation type="vanished">检查更新</translation>
     </message>
     <message>
-        <location line="+15"/>
-        <location line="+6"/>
         <source>有可用更新</source>
-        <translation>有可用更新</translation>
+        <translation type="vanished">有可用更新</translation>
     </message>
     <message>
-        <location line="-5"/>
-        <location line="+6"/>
         <source>已是最新</source>
-        <translation>已是最新</translation>
+        <translation type="vanished">已是最新</translation>
     </message>
     <message>
-        <location line="+24"/>
         <source>待更新软件包</source>
-        <translation>待更新软件包</translation>
+        <translation type="vanished">待更新软件包</translation>
     </message>
 </context>
 <context>

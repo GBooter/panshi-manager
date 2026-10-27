@@ -132,6 +132,47 @@ EN = {
     ("QObject", "有可用更新"): "Updates available",
     ("QObject", "已是最新"): "Up to date",
     ("QObject", "待更新软件包"): "Packages to update",
+
+    # ---- 关于页参考区块重设计（2026-10-27）----
+    ("AboutPage", "不可变系统的六条核心机制"):
+        "Six core mechanisms of the immutable system",
+    ("AboutPage", "点击命令右侧图标复制，可直接粘贴到终端执行"):
+        "Click the icon at the right of a command to copy it, then paste it into a terminal",
+    ("AboutPage", "复制全部"): "Copy all",
+    ("QObject", "复制全部"): "Copy all",
+    ("QObject", "展开或收起"): "Expand or collapse",
+    ("QObject", "展开"): "Expand",
+    ("QObject", "收起"): "Collapse",
+
+    ("PanshiUi::PanshiAboutDialog", "不可变系统的六条核心机制"):
+        "Six core mechanisms of the immutable system",
+    ("PanshiUi::PanshiAboutDialog", "核心目录只读保护"):
+        "Read-only protection for core directories",
+    ("PanshiUi::PanshiAboutDialog", "/usr 只读 overlay，/etc /opt 可写 overlay"):
+        "/usr is a read-only overlay; /etc and /opt are writable overlays",
+    ("PanshiUi::PanshiAboutDialog", "原子更新"): "Atomic updates",
+    ("PanshiUi::PanshiAboutDialog", "升级失败自动回滚（auto-rollback-on-failure）"):
+        "Rolls back automatically if an upgrade fails (auto-rollback-on-failure)",
+    ("PanshiUi::PanshiAboutDialog", "快照备份"): "Snapshot backups",
+    ("PanshiUi::PanshiAboutDialog", "基于 OSTree 秒级增量快照，支持导出/导入"):
+        "OSTree-based incremental snapshots in seconds, with export and import",
+    ("PanshiUi::PanshiAboutDialog", "初始备份保护"): "Initial backup protection",
+    ("PanshiUi::PanshiAboutDialog", "初始备份受系统保护，不可删除/修改"):
+        "The initial backup is protected by the system and cannot be deleted or modified",
+    ("PanshiUi::PanshiAboutDialog", "还原需重启"): "Rollback needs a reboot",
+    ("PanshiUi::PanshiAboutDialog", "快照还原需重启生效，可写层开启时禁止还原"):
+        "A rollback takes effect after a reboot and is blocked while the writable layer is on",
+    ("PanshiUi::PanshiAboutDialog", "分层存储"): "Layered storage",
+    ("PanshiUi::PanshiAboutDialog", "系统与数据分区分层，/home 等数据分区不受还原影响"):
+        "System and data are layered; data partitions such as /home are unaffected by a rollback",
+    ("PanshiUi::PanshiAboutDialog", "点击命令右侧图标复制，可直接粘贴到终端执行"):
+        "Click the icon at the right of a command to copy it, then paste it into a terminal",
+    ("PanshiUi::PanshiAboutDialog", "列出快照"): "List snapshots",
+    ("PanshiUi::PanshiAboutDialog", "创建快照"): "Create a snapshot",
+    ("PanshiUi::PanshiAboutDialog", "还原快照"): "Roll back to a snapshot",
+    ("PanshiUi::PanshiAboutDialog", "保护状态"): "Protection status",
+    ("PanshiUi::PanshiAboutDialog", "开/关可写层"): "Enable or disable the writable layer",
+    ("PanshiUi::PanshiAboutDialog", "部署状态"): "Deployment status",
 }
 
 

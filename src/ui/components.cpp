@@ -10,12 +10,18 @@
 
 #include <QAbstractButton>
 #include <QEasingCurve>
+#include <QEvent>
+#include <QFileInfo>
+#include <QFontDatabase>
 #include <QGridLayout>
 #include <QList>
 #include <QMainWindow>
+#include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPixmap>
 #include <QPainter>
+#include <QPainterPath>
+#include <QPen>
 #include <QPointer>
 #include <QProcess>
 #include <QPropertyAnimation>
@@ -1345,6 +1351,276 @@ void PanshiCollapsible::updateMark()
 {
     const QString title = m_toggle->text().mid(2);   // 去掉前缀「▸ 」/「▾ 」
     m_toggle->setText((isExpanded() ? QStringLiteral("▾ ") : QStringLiteral("▸ ")) + title);
+}
+
+// ---------------------------------------------------------------- 参考信息卡
+QIcon tintedFeatureIcon(const QString &key, const QColor &tint)
+{
+    const QString bundled = QStringLiteral(":/icons/nav/%1.svg").arg(key);
+    if (QFileInfo::exists(bundled)) {
+        // 自带源图是纯黑单色：必须现染。渲染尺寸取 64 再缩到目标像素，
+        // 缩小采样能保住抗锯齿边缘（16px 直接渲染会发毛）。
+        return QIcon(tintedPixmap(QIcon(bundled), QSize(64, 64), tint));
+    }
+    const QIcon theme = themedIcon(key, QStyle::SP_FileIcon);
+    if (!theme.isNull())
+        return theme;   // 彩色主题图标：染色会毁掉它的配色，原样返回
+    return themedIcon(QStringLiteral("dialog-information"));
+}
+
+PanshiIconTile::PanshiIconTile(const QString &iconKey, int size, QWidget *parent)
+    : QWidget(parent)
+    , m_iconKey(iconKey)
+    , m_size(size)
+{
+    setFixedSize(size, size);
+    reloadIcon();
+    // pixmap 是快照：切主题后必须重取（同 iconBadge 的教训），
+    // 否则暗色下仍是亮色主题那版图标。
+    QObject::connect(DGuiApplicationHelper::instance(),
+                     &DGuiApplicationHelper::applicationPaletteChanged,
+                     this, [this] {
+        reloadIcon();
+        update();
+    });
+}
+
+void PanshiIconTile::reloadIcon()
+{
+    const int isz = qMax(12, int(m_size * 0.56));
+    // 图标用**正文色**而非主题色：底色已经是强调色的柔和版，图标再用同色相
+    // 就是「浅蓝上的蓝」——对比度不足，缩到 18px 基本糊掉（实测）。
+    // 正文色在亮/暗两套下都与柔和底形成强对比，且同样跟随主题。
+    m_pixmap = tintedFeatureIcon(m_iconKey, semanticColor(Semantic::Normal)).pixmap(isz, isz);
+}
+
+void PanshiIconTile::paintEvent(QPaintEvent *)
+{
+    QPainter p(this);
+    fillRounded(&p, QRectF(rect()), Radius::Element, softFill(Semantic::Accent, Alpha::SoftFill));
+    if (!m_pixmap.isNull()) {
+        // 居中绘制：图标尺寸随 size 走，不依赖布局的 AlignCenter（自绘控件没这个能力）
+        p.drawPixmap((width() - m_pixmap.width()) / 2,
+                     (height() - m_pixmap.height()) / 2, m_pixmap);
+    }
+}
+
+PanshiCaret::PanshiCaret(QWidget *parent)
+    : QAbstractButton(parent)
+{
+    setFixedSize(Size::IconLarge, Size::IconLarge);
+    setCursor(Qt::PointingHandCursor);
+    setFocusPolicy(Qt::StrongFocus);
+    setAccessibleName(QObject::tr("展开或收起"));
+}
+
+void PanshiCaret::setExpanded(bool expanded)
+{
+    if (m_expanded == expanded)
+        return;
+    m_expanded = expanded;
+    update();
+}
+
+void PanshiCaret::paintEvent(QPaintEvent *)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    QPen pen(semanticColor(m_expanded ? Semantic::Normal : Semantic::Muted));
+    pen.setWidthF(1.6);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    p.setPen(pen);
+    p.setBrush(Qt::NoBrush);
+
+    // 折线而非三角形字符：字形随字体变化（中文字体的 ▸ 字宽/基线各不相同），
+    // 自绘在任意主题字体下都稳定居中。
+    const QPointF c = QRectF(rect()).center();
+    const qreal w = 4.5;
+    const qreal h = 2.6;
+    QPainterPath path;
+    if (m_expanded) {   // 展开 → 向下
+        path.moveTo(c.x() - w, c.y() - h);
+        path.lineTo(c.x(), c.y() + h);
+        path.lineTo(c.x() + w, c.y() - h);
+    } else {            // 收起 → 向右
+        path.moveTo(c.x() - h, c.y() - w);
+        path.lineTo(c.x() + h, c.y());
+        path.lineTo(c.x() - h, c.y() + w);
+    }
+    p.drawPath(path);
+}
+
+PanshiCommandChip::PanshiCommandChip(const QString &command, QWidget *parent)
+    : QWidget(parent)
+    , m_command(command)
+{
+    // 系统等宽字体 + T8：与 makeCommandRow 的命令字号一致（两处必须同档，
+    // 否则同一份命令在对话框和页面里大小不同）。
+    QFont mono = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    setFont(mono);
+    DFontSizeManager::instance()->bind(this, DFontSizeManager::T8);
+
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setMinimumWidth(80);
+    setToolTip(command);
+    setAccessibleName(command);
+
+    m_lay = new QHBoxLayout(this);
+    m_lay->setContentsMargins(Space::S + 2, Space::XS, Space::XS, Space::XS);
+    m_lay->setSpacing(Space::XS);
+    m_lay->addStretch();
+}
+
+void PanshiCommandChip::setTrailing(QWidget *w)
+{
+    if (!w || m_trailing)
+        return;
+    m_trailing = w;
+    if (w->parentWidget() != this)
+        w->setParent(this);
+    m_lay->addWidget(w, 0, Qt::AlignVCenter);
+    updateGeometry();
+    update();
+}
+
+QSize PanshiCommandChip::sizeHint() const
+{
+    const QFontMetrics fm(font());
+    int h = fm.height() + 2 * Space::XS + 4;
+    int w = fm.horizontalAdvance(m_command) + 2 * (Space::S + 2) + 8;
+    if (m_trailing) {
+        h = qMax(h, m_trailing->sizeHint().height() + 2 * Space::XS);
+        w += m_trailing->sizeHint().width() + Space::XS;
+    }
+    return QSize(w, h);
+}
+
+QSize PanshiCommandChip::minimumSizeHint() const
+{
+    const QFontMetrics fm(font());
+    int h = fm.height() + 2 * Space::XS + 4;
+    int w = 80;
+    if (m_trailing) {
+        h = qMax(h, m_trailing->sizeHint().height() + 2 * Space::XS);
+        w += m_trailing->sizeHint().width();
+    }
+    return QSize(w, h);
+}
+
+void PanshiCommandChip::paintEvent(QPaintEvent *)
+{
+    QPainter p(this);
+    fillRounded(&p, QRectF(rect()), Radius::Element, itemBackground());
+
+    // 文字区右边界让位给 trailing：几何取 layout 排好的位置（不猜按钮宽度）
+    int right = width() - (Space::S + 2);
+    if (m_trailing)
+        right = m_trailing->geometry().left() - Space::XS;
+    QRect textRect = rect().adjusted(Space::S + 2, 0, 0, 0);
+    textRect.setRight(qMax(textRect.left(), right));
+
+    p.setPen(semanticColor(Semantic::Normal));
+    p.setFont(font());
+    const QString shown = fontMetrics().elidedText(m_command, Qt::ElideMiddle, textRect.width());
+    p.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, shown);
+}
+
+PanshiRefCard::PanshiRefCard(const QString &iconKey, const QString &title,
+                             const QString &subtitle, QWidget *parent)
+    : PanshiPanel(parent, Level::Surface)
+{
+    auto *l = body();
+    l->setContentsMargins(Space::L, Space::M, Space::L, Space::M);
+    l->setSpacing(Space::M);
+
+    // ---- 标题行（整行可点）----
+    m_header = new QWidget(this);
+    m_header->setCursor(Qt::PointingHandCursor);
+    m_header->installEventFilter(this);
+
+    m_headerRow = new QHBoxLayout(m_header);
+    m_headerRow->setContentsMargins(0, 0, 0, 0);
+    m_headerRow->setSpacing(Space::M);
+
+    if (!iconKey.isEmpty())
+        m_headerRow->addWidget(new PanshiIconTile(iconKey, Space::XXL, m_header), 0,
+                               Qt::AlignVCenter);
+
+    auto *titles = new QVBoxLayout;
+    titles->setContentsMargins(0, 0, 0, 0);
+    titles->setSpacing(Space::XS);
+    auto *t = makeLabel(title, TextLevel::SectionTitle, Semantic::Normal);
+    QFont tf = t->font();
+    tf.setBold(true);
+    t->setFont(tf);   // bind 之后再置粗：T5 只定字号，粗体是这一层的身份标记
+    titles->addWidget(t);
+    if (!subtitle.isEmpty()) {
+        auto *d = makeLabel(subtitle, TextLevel::Desc, Semantic::Muted);
+        d->setWordWrap(true);
+        titles->addWidget(d);
+    }
+    m_headerRow->addLayout(titles, 1);   // 文本列吸收多余宽度，caret 恒在最右
+
+    m_caret = new PanshiCaret(m_header);
+    m_headerRow->addWidget(m_caret, 0, Qt::AlignVCenter);
+    QObject::connect(m_caret, &QAbstractButton::clicked, this, [this] {
+        setExpanded(!m_expanded);
+    });
+
+    l->addWidget(m_header);
+
+    auto *sep = new PanshiSeparator(this);
+    m_sep = sep;
+    l->addWidget(sep);
+
+    m_contentHost = new QWidget(this);
+    m_content = new QVBoxLayout(m_contentHost);
+    m_content->setContentsMargins(0, 0, 0, 0);
+    m_content->setSpacing(Space::S);
+    l->addWidget(m_contentHost);
+
+    syncExpanded();
+}
+
+void PanshiRefCard::addHeaderWidget(QWidget *w)
+{
+    if (!w)
+        return;
+    // 插在 caret 之前：组级操作靠右，caret 永远是最右一格（位置稳定才可预期）
+    m_headerRow->insertWidget(qMax(0, m_headerRow->count() - 1), w, 0, Qt::AlignVCenter);
+}
+
+void PanshiRefCard::setExpanded(bool expanded)
+{
+    m_expanded = expanded;
+    syncExpanded();
+}
+
+void PanshiRefCard::syncExpanded()
+{
+    if (m_sep)
+        m_sep->setVisible(m_expanded);
+    if (m_contentHost)
+        m_contentHost->setVisible(m_expanded);
+    if (m_caret) {
+        m_caret->setExpanded(m_expanded);
+        m_caret->setAccessibleName(m_expanded ? QObject::tr("收起") : QObject::tr("展开"));
+    }
+}
+
+bool PanshiRefCard::eventFilter(QObject *watched, QEvent *e)
+{
+    // 标题行整行可点：标签/图块默认忽略鼠标事件 → 会冒泡到 m_header。
+    // 用 Release 而非 Press：按下后拖走（想选文字/拖窗口）不该被当成点击。
+    if (watched == m_header && e->type() == QEvent::MouseButtonRelease) {
+        auto *me = static_cast<QMouseEvent *>(e);
+        if (me->button() == Qt::LeftButton && m_header->rect().contains(me->pos())) {
+            setExpanded(!m_expanded);
+            return true;
+        }
+    }
+    return PanshiPanel::eventFilter(watched, e);
 }
 
 // ---- 表格无障碍（O9 收尾 / QTableWidgetItem 单元格级）----

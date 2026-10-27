@@ -39,6 +39,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QVector>
 
 DWIDGET_USE_NAMESPACE
 
@@ -443,39 +444,36 @@ QWidget *PanshiAboutDialog::buildBody()
                                tr("磐石设置遵循 GPL-3.0-or-later 协议发布"), card));
     root->addWidget(card);
 
-    // ---- ③ 技术参考 / 常用命令（默认折叠）----
-    // 内容与「关于」页共用 Ui::makeCommandRow 与同一段说明文案，避免两处分叉。
-    m_refBox = new PanshiCollapsible(tr("磐石系统技术参考"), body);
-    auto *ref = makeLabel(
-        tr("· 核心目录只读保护: /usr 只读 overlay, /etc /opt 可写 overlay\n"
-           "· 原子更新: 升级失败自动回滚 (auto-rollback-on-failure)\n"
-           "· 快照备份: 基于 OSTree 秒级增量快照, 支持导出/导入\n"
-           "· 初始备份受系统保护, 不可删除/修改\n"
-           "· 快照还原需重启生效, 可写层开启时禁止还原\n"
-           "· 系统与数据分区分层: /home 等数据分区不受还原影响"),
-        TextLevel::Desc, Semantic::Normal);
-    ref->setWordWrap(true);
-    m_refBox->setContent(ref);
+    // ---- ③ 技术参考 / 常用命令（参考卡，默认收起）----
+    // 2026-10-27 起与「关于」页共用组件（PanshiRefCard + referenceGrid / commandList），
+    // 只是这里空间紧张：卡片默认收起，点标题行展开。
+    m_refBox = new PanshiRefCard(QStringLiteral("shield-check"), tr("磐石系统技术参考"),
+                                 tr("不可变系统的六条核心机制"), body);
+    const QVector<Ui::ReferenceItem> feats = {
+        {tr("核心目录只读保护"), tr("/usr 只读 overlay，/etc /opt 可写 overlay")},
+        {tr("原子更新"), tr("升级失败自动回滚（auto-rollback-on-failure）")},
+        {tr("快照备份"), tr("基于 OSTree 秒级增量快照，支持导出/导入")},
+        {tr("初始备份保护"), tr("初始备份受系统保护，不可删除/修改")},
+        {tr("还原需重启"), tr("快照还原需重启生效，可写层开启时禁止还原")},
+        {tr("分层存储"), tr("系统与数据分区分层，/home 等数据分区不受还原影响")},
+    };
+    // 对话框 600px 宽：两列会把说明压成三行，故单列
+    m_refBox->content()->addWidget(Ui::referenceGrid(feats, 1, m_refBox));
+    m_refBox->setExpanded(false);
     root->addWidget(m_refBox);
 
-    m_cmdBox = new PanshiCollapsible(tr("常用命令参考"), body);
-    auto *cmdHost = new QWidget(m_cmdBox);
-    auto *cmdLay = new QVBoxLayout(cmdHost);
-    cmdLay->setContentsMargins(0, 0, 0, 0);
-    cmdLay->setSpacing(Space::S);
-    struct Cmd { const char *cmd; const char *cmt; };
-    static const Cmd kCmds[] = {
-        {"sudo deepin-immutable-ctl snapshot list", "列出快照"},
-        {"sudo deepin-immutable-ctl snapshot create <名称> <描述>", "创建快照"},
-        {"sudo deepin-immutable-ctl snapshot rollback <id>", "还原快照"},
-        {"sudo deepin-immutable-writable status", "保护状态"},
-        {"sudo deepin-immutable-writable enable|disable", "开/关可写层"},
-        {"sudo deepin-immutable-ctl admin status", "部署状态"},
+    m_cmdBox = new PanshiRefCard(QStringLiteral("utilities-terminal"), tr("常用命令参考"),
+                                 tr("点击命令右侧图标复制，可直接粘贴到终端执行"), body);
+    const QVector<Ui::CommandRef> cmds = {
+        {QStringLiteral("sudo deepin-immutable-ctl snapshot list"), tr("列出快照")},
+        {QStringLiteral("sudo deepin-immutable-ctl snapshot create <名称> <描述>"), tr("创建快照")},
+        {QStringLiteral("sudo deepin-immutable-ctl snapshot rollback <id>"), tr("还原快照")},
+        {QStringLiteral("sudo deepin-immutable-writable status"), tr("保护状态")},
+        {QStringLiteral("sudo deepin-immutable-writable enable|disable"), tr("开/关可写层")},
+        {QStringLiteral("sudo deepin-immutable-ctl admin status"), tr("部署状态")},
     };
-    for (const Cmd &c : kCmds)
-        cmdLay->addWidget(Ui::makeCommandRow(QString::fromLatin1(c.cmd),
-                                              tr(c.cmt), cmdHost));
-    m_cmdBox->setContent(cmdHost);
+    m_cmdBox->content()->addWidget(Ui::commandList(cmds, m_cmdBox));
+    m_cmdBox->setExpanded(false);
     root->addWidget(m_cmdBox);
 
     return body;
