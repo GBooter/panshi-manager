@@ -220,7 +220,7 @@ panshi-manager/
 │   └── disk/                 # 磁盘监控子系统（GUI 与 --monitor 共用）
 ├── data/icons/               # 应用图标
 ├── translations/             # zh_CN + en_US 翻译源
-├── tools/                    # 开发期验证探针
+├── tools/                    # 开发期验证探针 + 截图采集脚本
 ├── debian/                   # Debian 打包
 ├── docs/screenshots/         # README 截图
 └── install.sh
